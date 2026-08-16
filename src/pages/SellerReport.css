@@ -1,0 +1,179 @@
+.seller-report-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+/* Top 7 Metric Cards Grid */
+.seller-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+.seller-kpi-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.04));
+}
+
+.seller-kpi-icon {
+  color: var(--text-dark, #374151);
+  margin-bottom: 8px;
+}
+
+.seller-kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-dark, #111827);
+  line-height: 1.2;
+}
+
+.seller-kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  text-transform: uppercase;
+  margin-top: 4px;
+  letter-spacing: 0.05em;
+}
+
+/* Middle Section: Summary & Observations */
+.seller-summary-section {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.seller-summary-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 16px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 24px;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.04));
+}
+
+.summary-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary-col:first-child {
+  border-right: 1px solid var(--border-color, #f3f4f6);
+  padding-right: 20px;
+}
+
+.summary-heading {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e6f4ea;
+  color: #137333;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  width: fit-content;
+}
+
+[data-theme="dark"] .rating-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.rating-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+}
+
+.summary-desc {
+  font-size: 13px;
+  color: var(--text-muted, #6b7280);
+  line-height: 1.5;
+}
+
+.summary-body {
+  font-size: 14px;
+  color: var(--text-dark, #374151);
+  line-height: 1.6;
+}
+
+/* Right Observations Card */
+.seller-obs-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-bottom: 4px solid #2563eb;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.04));
+}
+
+.obs-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-dark, #111827);
+}
+
+.obs-body {
+  font-size: 13px;
+  color: var(--text-muted, #4b5563);
+  line-height: 1.6;
+}
+
+/* Charts Grid */
+.seller-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.seller-chart-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.04));
+}
+
+.seller-chart-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-dark, #111827);
+  margin-bottom: 20px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .seller-metrics-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .seller-summary-section {
+    grid-template-columns: 1fr;
+  }
+}

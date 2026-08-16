@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm view *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(awk -F= '{print $1\"=\"\\(length\\($2\\)>0?\"<set:\"length\\($2\\)\" chars>\":\"<empty>\"\\)}' .env)",
+      "Bash(grep -o '^VITE_SUPABASE_ANON_KEY=.\\\\{0,20\\\\}' .env)",
+      "Bash(grep -o '^SUPABASE_SERVICE_ROLE_KEY=.\\\\{0,20\\\\}' .env)"
+    ]
+  }
+}

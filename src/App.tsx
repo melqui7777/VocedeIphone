@@ -1,0 +1,44 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider } from './context/AuthContext';
+import { RequireAuth } from './components/RequireAuth';
+import { Layout } from './components/Layout';
+import { Login } from './pages/Login';
+import { Dashboard } from './pages/Dashboard';
+import { Forecast } from './pages/Forecast';
+import { Sales } from './pages/Sales';
+import { Sellers } from './pages/Sellers';
+import { SellerReport } from './pages/SellerReport';
+import { Inventory } from './pages/Inventory';
+import { Goals } from './pages/Goals';
+import { TVPanel } from './pages/TVPanel';
+import { Settings } from './pages/Settings';
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<RequireAuth />}>
+              <Route path="/tv" element={<TVPanel />} />
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="forecast" element={<Forecast />} />
+                <Route path="vendas" element={<Sales />} />
+                <Route path="vendedores" element={<Sellers />} />
+                <Route path="vendedores/:id" element={<SellerReport />} />
+                <Route path="estoque" element={<Inventory />} />
+                <Route path="metas" element={<Goals />} />
+                <Route path="configuracoes" element={<Settings />} />
+              </Route>
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
+  );
+}
+

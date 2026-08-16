@@ -1,0 +1,463 @@
+/* ============================================================
+   Stat cards (clickable)
+   ============================================================ */
+.sales-stat-card {
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.sales-stat-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.sales-stat-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(10, 37, 255, 0.12);
+}
+
+[data-theme="dark"] .sales-stat-card.active {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+/* ============================================================
+   "Vendas do Mês" — card navegável (mês/ano)
+   ============================================================ */
+.sales-month-card {
+  cursor: default;
+}
+
+.sales-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.sales-month-arrow {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--text-muted);
+}
+
+.sales-month-arrow:hover {
+  background: var(--bg-main);
+  color: var(--text-dark);
+}
+
+.sales-month-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(10, 37, 255, 0.08);
+}
+
+[data-theme="dark"] .sales-month-label {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.sales-month-label:hover {
+  opacity: 0.8;
+}
+
+.sales-stat-value-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  width: 100%;
+}
+
+/* ============================================================
+   Seletor de mês/ano (popover "calendário de meses e anos")
+   ============================================================ */
+.sales-month-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding-bottom: 4px;
+}
+
+.sales-month-grid-item {
+  padding: 12px 0;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.sales-month-grid-item:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.sales-month-grid-item.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ============================================================
+   Filters bar
+   ============================================================ */
+.sales-filters {
+  padding: 16px 20px;
+}
+
+.sales-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.sales-filters-row select {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-dark);
+  font-size: 14px;
+  min-width: 160px;
+}
+
+.sales-search {
+  flex: 1;
+  min-width: 220px;
+  margin-left: auto;
+}
+
+/* ============================================================
+   View button (table row action)
+   ============================================================ */
+.sales-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-dark);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.sales-view-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ============================================================
+   Modal overlay / shared popover shell
+   ============================================================ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: salesFadeIn 0.2s ease-out;
+}
+
+@keyframes salesFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes salesSlideUp {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-close-btn {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+}
+
+.modal-close-btn:hover {
+  background: var(--bg-main);
+  color: var(--text-dark);
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: var(--bg-main);
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-dark);
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-main);
+}
+
+.sales-popover .btn-primary:disabled,
+.sales-detail-modal .btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   Breakdown / Date popover
+   ============================================================ */
+.sales-popover {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 440px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: salesSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.sales-popover-header {
+  padding: 20px 22px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sales-popover-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.sales-popover-body {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+}
+
+.sales-popover-empty {
+  padding: 32px 22px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.sales-popover-totals {
+  display: flex;
+  gap: 24px;
+}
+
+.sales-popover-totals > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sales-popover-total-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.sales-popover-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 10px;
+}
+
+.sales-popover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.sales-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  font-size: 13px;
+}
+
+.sales-popover-rank {
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 20px;
+}
+
+.sales-popover-row-name {
+  flex: 1;
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+.sales-popover-row-value {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ============================================================
+   Calendar
+   ============================================================ */
+.sales-calendar {
+  padding: 18px 22px 8px;
+}
+
+.sales-calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.sales-calendar-month {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.sales-calendar-arrow {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.sales-calendar-arrow:hover {
+  background: var(--bg-main);
+  color: var(--text-dark);
+}
+
+.sales-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.sales-calendar-weekdays span {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding-bottom: 6px;
+}
+
+.sales-calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-dark);
+}
+
+.sales-calendar-day:hover {
+  background: var(--bg-main);
+}
+
+.sales-calendar-day.today {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.sales-calendar-day.selected {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ============================================================
+   Sale detail modal
+   ============================================================ */
+.sales-detail-modal {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: salesSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.sales-detail-grid {
+  padding: 20px 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.sales-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sales-detail-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+/* ============================================================
+   Dark mode
+   ============================================================ */
+[data-theme="dark"] .sales-filters-row select,
+[data-theme="dark"] .sales-popover-row {
+  background-color: rgba(15, 23, 42, 0.6);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .sales-view-btn {
+  background: rgba(255, 255, 255, 0.03);
+}
