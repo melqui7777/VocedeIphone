@@ -15,13 +15,10 @@ import {
   DollarSign,
   ArrowRight
 } from 'lucide-react';
+import type { TranscriptMessage } from '../lib/transcript';
 import './ConversationSummaryModal.css';
 
-export interface ChatMessage {
-  sender: 'client' | 'seller';
-  text: string;
-  time: string;
-}
+export type ChatMessage = TranscriptMessage;
 
 export interface ConversationData {
   id: string;
@@ -212,24 +209,30 @@ export function ConversationSummaryModal({ conversation, onClose }: Conversation
                 </div>
                 
                 <div className="chat-messages-list">
-                  {conversation.chatHistory.map((msg, index) => {
-                    const s = (msg.sender || '').toString().toLowerCase().trim();
-                    const isSeller = s === 'seller' || s === 'vendedor' || s === 'outgoing' || s === 'user' || s === 'agent';
-                    return (
-                      <div 
-                        key={index} 
-                        className={`chat-bubble-wrapper ${isSeller ? 'seller-msg' : 'client-msg'}`}
-                      >
+                  {conversation.chatHistory.length === 0 && (
+                    <div className="chat-empty-state">Nenhuma mensagem registrada para esta conversa.</div>
+                  )}
+                  {conversation.chatHistory.map((msg) => (
+                    <React.Fragment key={msg.id}>
+                      {msg.dayLabel && <div className="chat-day-divider">{msg.dayLabel}</div>}
+                      <div className={`chat-bubble-wrapper ${msg.sender}-msg ${msg.sender === 'client' ? 'client-side' : 'company-side'}`}>
                         <div className="chat-sender-name">
-                          {isSeller ? conversation.seller : conversation.client}
+                          {msg.senderName}
                           <span className="chat-msg-time">{msg.time}</span>
                         </div>
-                        <div className="chat-bubble">
-                          {msg.text}
+                        <div className={`chat-bubble ${msg.unavailable ? 'chat-bubble-unavailable' : ''}`}>
+                          {msg.unavailable ? (
+                            'Conteúdo não disponível pela API da Kommo'
+                          ) : (
+                            <>
+                              {msg.attachmentType && <span className="chat-attachment-tag">[{msg.attachmentType}]</span>}
+                              {msg.text}
+                            </>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
+                    </React.Fragment>
+                  ))}
                 </div>
               </div>
             </div>

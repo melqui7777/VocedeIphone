@@ -383,14 +383,38 @@
   max-width: 80%;
 }
 
-.chat-bubble-wrapper.seller-msg {
+.chat-bubble-wrapper.company-side {
   align-self: flex-end;
   align-items: flex-end;
 }
 
-.chat-bubble-wrapper.client-msg {
+.chat-bubble-wrapper.client-side {
   align-self: flex-start;
   align-items: flex-start;
+}
+
+.chat-bubble-wrapper.system-msg {
+  align-self: center;
+  align-items: center;
+}
+
+.chat-day-divider,
+.chat-empty-state {
+  align-self: center;
+  font-size: 11px;
+  color: #94A3B8;
+  padding: 4px 0;
+}
+
+.chat-bubble.chat-bubble-unavailable {
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.chat-attachment-tag {
+  font-style: italic;
+  opacity: 0.8;
+  margin-right: 6px;
 }
 
 .chat-sender-name {
@@ -426,6 +450,20 @@
   background-color: var(--primary);
   color: #FFFFFF;
   border-bottom-right-radius: 4px;
+}
+
+.bot-msg .chat-bubble {
+  background-color: #E0E7FF;
+  color: #1E293B;
+  border-bottom-right-radius: 4px;
+}
+
+.system-msg .chat-bubble {
+  background-color: transparent;
+  color: #64748B;
+  font-size: 12px;
+  box-shadow: none;
+  border: 1px dashed #CBD5E1;
 }
 
 /* Analysis Tab */
@@ -649,6 +687,16 @@
 [data-theme='dark'] .seller-msg .chat-bubble {
   background-color: #3B82F6;
   color: #FFFFFF;
+}
+
+[data-theme='dark'] .bot-msg .chat-bubble {
+  background-color: #312E81;
+  color: #F8FAFB;
+}
+
+[data-theme='dark'] .system-msg .chat-bubble {
+  color: #94A3B8;
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 [data-theme='dark'] .analysis-card {

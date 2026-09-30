@@ -2,21 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Eye, MessageSquare, CheckCircle2, XCircle,
-  ShoppingBag, TrendingUp, Clock, Star
+  ShoppingBag, TrendingUp, Clock, Star, Smartphone, Headphones
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip
 } from 'recharts';
-import { ConversationSummaryModal, type ConversationData } from '../components/ConversationSummaryModal';
+import { ConversationSummaryModal, type ConversationData, type ChatMessage } from '../components/ConversationSummaryModal';
 import { useTheme } from '../context/ThemeContext';
 import {
   fetchSellerById,
   fetchSalesInRange,
   fetchConversationsBySeller,
   fetchConversationMessages,
+  fetchProducts,
   getMonthRange,
 } from '../lib/api';
+import { buildTranscript } from '../lib/transcript';
 import type { Seller, Conversation } from '../lib/database.types';
 import './SellerReport.css';
 
@@ -39,6 +41,8 @@ interface ReportData {
   responded: number;
   lost: number;
   productsSold: number;
+  devicesSold: number;
+  accessoriesSold: number;
   conversionRate: number;
   avgResponseTime: string;
   avgScore: string;
@@ -62,9 +66,17 @@ export function SellerReport() {
       fetchSellerById(id),
       fetchSalesInRange(start, end),
       fetchConversationsBySeller(id),
-    ]).then(([seller, monthSales, conversations]) => {
-      const productsSold = monthSales
-        .filter((s) => s.seller_id === id)
+      fetchProducts(),
+    ]).then(([seller, monthSales, conversations, products]) => {
+      const productMap = new Map(products.map((p) => [p.id, p]));
+      const sellerSales = monthSales.filter((s) => s.seller_id === id);
+
+      const productsSold = sellerSales.reduce((sum, s) => sum + s.quantity, 0);
+      const devicesSold = sellerSales
+        .filter((s) => productMap.get(s.product_id)?.category === 'Aparelhos')
+        .reduce((sum, s) => sum + s.quantity, 0);
+      const accessoriesSold = sellerSales
+        .filter((s) => productMap.get(s.product_id)?.category === 'Acessórios')
         .reduce((sum, s) => sum + s.quantity, 0);
 
       const success = conversations.filter((c) => c.result_type === 'success').length;
@@ -97,6 +109,8 @@ export function SellerReport() {
         responded: total,
         lost,
         productsSold,
+        devicesSold,
+        accessoriesSold,
         conversionRate: total > 0 ? Math.round((success / total) * 100) : 0,
         avgResponseTime: formatDuration(avgDuration),
         avgScore: avgScoreValue != null ? `${avgScoreValue.toFixed(1)} / 10` : '—',
@@ -106,75 +120,21 @@ export function SellerReport() {
     });
   }, [id]);
 
-function generateDemoChatHistory(conv: Conversation, sellerName: string): ChatMessage[] {
-  const baseTime = new Date(conv.occurred_at);
-  const formatTime = (offsetMins: number) => {
-    const d = new Date(baseTime.getTime() + offsetMins * 60000);
-    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const clientName = conv.client_name || 'Cliente';
-  const product = conv.product || 'iPhone';
-
-  if (conv.result_type === 'success') {
-    return [
-      { sender: 'client', text: `Olá, bom dia! Tenho interesse no ${product}.`, time: formatTime(0) },
-      { sender: 'seller', text: `Bom dia, ${clientName}! Me chamo ${sellerName}. Temos o ${product} disponível a pronta entrega!`, time: formatTime(2) },
-      { sender: 'client', text: `Legal! Vocês pegam meu seminovo na troca?`, time: formatTime(5) },
-      { sender: 'seller', text: `Com certeza! Aceitamos seu seminovo como parte do pagamento com uma ótima avaliação. Qual o modelo e gigas do seu atual?`, time: formatTime(7) },
-      { sender: 'client', text: `É um iPhone 14 Pro Max 128GB em perfeito estado, saúde da bateria 88%.`, time: formatTime(10) },
-      { sender: 'seller', text: `Perfeito! Consigo avaliar seu 14 Pro Max em um valor excelente no abatimento. Posso separar a unidade para você vir retirar na loja ou prefere entrega?`, time: formatTime(13) },
-      { sender: 'client', text: `Vou querer retirar na loja hoje à tarde! Pode reservar pra mim.`, time: formatTime(16) },
-      { sender: 'seller', text: `Fechado! Já deixei reservado no seu nome. Te aguardo aqui na loja. Obrigado pela preferência!`, time: formatTime(18) },
-    ];
-  } else if (conv.result_type === 'loss') {
-    return [
-      { sender: 'client', text: `Bom dia, queria saber o valor do ${product}.`, time: formatTime(0) },
-      { sender: 'seller', text: `Olá ${clientName}! Bom dia. Me chamo ${sellerName}. O ${product} está R$ 6.890 em até 12x sem juros ou com desconto à vista!`, time: formatTime(3) },
-      { sender: 'client', text: `Entendi. Vi num site de e-commerce um pouco mais barato.`, time: formatTime(8) },
-      { sender: 'seller', text: `Compreendo! Aqui na loja garantimos aparelho original lacrado, garantia oficial e suporte presencial imediato. Se você vier hoje, consigo te dar uma película 3D e capa de brinde!`, time: formatTime(12) },
-      { sender: 'client', text: `Vou pensar mais um pouco e qualquer coisa te chamo. Obrigado.`, time: formatTime(20) },
-      { sender: 'seller', text: `Tranquilo ${clientName}! Fico à disposição se precisar de algo. Tenha um ótimo dia!`, time: formatTime(22) },
-    ];
-  } else {
-    return [
-      { sender: 'client', text: `Bom dia`, time: formatTime(0) },
-      { sender: 'seller', text: `Olá ${clientName}, bom dia! Me chamo ${sellerName}, como posso te ajudar hoje?`, time: formatTime(2) },
-      { sender: 'client', text: `Queria saber se vcs pega um 16 pro max da troca pra um 17 pro max`, time: formatTime(15) },
-      { sender: 'seller', text: `Pegamos sim, ${clientName}! Avaliamos seu 16 Pro Max na troca pelo 17 Pro Max com ótimas condições.`, time: formatTime(18) },
-      { sender: 'client', text: `iPhone 16 pro Max 256 gigas Cor: natural`, time: formatTime(36) },
-      { sender: 'seller', text: `Excelente aparelho! Qual a saúde da bateria dele e possui a caixa original com cabo?`, time: formatTime(39) },
-    ];
-  }
-}
-
   const handleOpenSummary = async (conv: Conversation) => {
     if (!data) return;
     const messages = await fetchConversationMessages(conv.id);
     const occurred = new Date(conv.occurred_at);
 
-    let chatHistory: ChatMessage[] = [];
+    // Autores e ordem vêm exatamente do banco — sem inferir remetente nem preencher com conversa de exemplo.
+    const chatHistory: ChatMessage[] = buildTranscript(messages, { clientName: conv.client_name });
 
-    if (messages.length > 0) {
-      chatHistory = messages.map((m) => {
-        const s = (m.sender || '').toString().toLowerCase().trim();
-        const isSeller = s === 'seller' || s === 'vendedor' || s === 'outgoing' || s === 'user' || s === 'agent';
-        return {
-          sender: isSeller ? ('seller' as const) : ('client' as const),
-          text: m.message,
-          time: new Date(m.sent_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        };
-      });
-
-      const hasSeller = chatHistory.some((m) => m.sender === 'seller');
-      if (!hasSeller && chatHistory.length > 1) {
-        chatHistory = chatHistory.map((m, idx) => ({
-          ...m,
-          sender: idx % 2 === 1 ? 'seller' : 'client',
-        }));
-      }
-    } else {
-      chatHistory = generateDemoChatHistory(conv, data.seller.name);
+    if (import.meta.env.DEV) {
+      // TEMPORÁRIO: ordem final exibida, para comparar com o Kommo durante a validação.
+      console.debug(
+        '[kommo-transcript]',
+        conv.external_id,
+        messages.map((m) => ({ id: m.external_id, sent_at: m.sent_at, seq: m.received_seq, sender: m.sender, name: m.sender_name }))
+      );
     }
 
     setSelectedConversation({
@@ -222,8 +182,28 @@ function generateDemoChatHistory(conv: Conversation, sellerName: string): ChatMe
         </div>
       </div>
 
-      {/* Top 7 Metric Cards */}
+      {/* Top Metric Cards */}
       <div className="seller-metrics-grid">
+        <div className="seller-kpi-card">
+          <Smartphone size={22} className="seller-kpi-icon" style={{ color: 'var(--primary)' }} />
+          <span className="seller-kpi-value">{data?.devicesSold ?? 0}</span>
+          <span className="seller-kpi-label">IPHONES</span>
+        </div>
+        <div className="seller-kpi-card">
+          <Headphones size={22} className="seller-kpi-icon" style={{ color: '#10B981' }} />
+          <span className="seller-kpi-value">{data?.accessoriesSold ?? 0}</span>
+          <span className="seller-kpi-label">ACESSÓRIOS</span>
+        </div>
+        <div className="seller-kpi-card">
+          <ShoppingBag size={22} className="seller-kpi-icon" />
+          <span className="seller-kpi-value">{data?.productsSold ?? 0}</span>
+          <span className="seller-kpi-label">TOTAL PRODUTOS</span>
+        </div>
+        <div className="seller-kpi-card">
+          <TrendingUp size={22} className="seller-kpi-icon" />
+          <span className="seller-kpi-value">{data?.conversionRate ?? 0}%</span>
+          <span className="seller-kpi-label">CONVERSÃO</span>
+        </div>
         <div className="seller-kpi-card">
           <MessageSquare size={22} className="seller-kpi-icon" />
           <span className="seller-kpi-value">{data?.received ?? 0}</span>
@@ -238,16 +218,6 @@ function generateDemoChatHistory(conv: Conversation, sellerName: string): ChatMe
           <XCircle size={22} className="seller-kpi-icon" />
           <span className="seller-kpi-value">{data?.lost ?? 0}</span>
           <span className="seller-kpi-label">PERDIDAS</span>
-        </div>
-        <div className="seller-kpi-card">
-          <ShoppingBag size={22} className="seller-kpi-icon" />
-          <span className="seller-kpi-value">{data?.productsSold ?? 0}</span>
-          <span className="seller-kpi-label">PRODUTOS</span>
-        </div>
-        <div className="seller-kpi-card">
-          <TrendingUp size={22} className="seller-kpi-icon" />
-          <span className="seller-kpi-value">{data?.conversionRate ?? 0}%</span>
-          <span className="seller-kpi-label">CONVERSÃO</span>
         </div>
         <div className="seller-kpi-card">
           <Clock size={22} className="seller-kpi-icon" />

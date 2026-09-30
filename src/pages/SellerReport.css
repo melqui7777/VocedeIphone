@@ -5,11 +5,11 @@
   width: 100%;
 }
 
-/* Top 7 Metric Cards Grid */
+/* Top Metric Cards Grid */
 .seller-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+  gap: 12px;
   width: 100%;
 }
 

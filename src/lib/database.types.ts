@@ -59,17 +59,40 @@ export type Conversation = {
   strengths: string[];
   improvements: string[];
   raw_payload: Record<string, unknown> | null;
+  kommo_lead_id: string | null;
+  kommo_chat_id: string | null;
+  kommo_contact_id: string | null;
   created_at: string;
 };
 
 export type ConversationMessage = {
   id: string;
   conversation_id: string;
+  /** Id da mensagem no Kommo — chave de deduplicação. */
   external_id: string | null;
-  sender: 'client' | 'seller';
+  sender: 'client' | 'seller' | 'bot' | 'system';
+  sender_id: string | null;
+  sender_name: string | null;
   message: string;
+  message_type: string;
+  direction: 'incoming' | 'outgoing' | null;
+  /** Horário original da mensagem no Kommo, normalizado em UTC — base da ordenação. */
   sent_at: string;
+  /** created_at exatamente como veio do Kommo (unix em segundos). */
+  created_at_original: string | null;
+  timestamp_valid: boolean;
+  kommo_chat_id: string | null;
+  kommo_talk_id: string | null;
+  kommo_lead_id: string | null;
+  kommo_contact_id: string | null;
+  kommo_entity_type: string | null;
+  kommo_entity_id: string | null;
+  kommo_event_id: string | null;
+  raw_payload: Record<string, unknown> | null;
+  /** Ordem de chegada no banco — desempate para mensagens do mesmo segundo. */
+  received_seq: number;
   created_at: string;
+  updated_at: string;
 };
 
 export type Goals = {

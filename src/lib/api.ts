@@ -132,14 +132,23 @@ export async function fetchConversationsBySeller(sellerId: string): Promise<Conv
   return data ?? [];
 }
 
-export async function fetchConversationMessages(conversationId: string): Promise<ConversationMessage[]> {
-  const { data, error } = await supabase
-    .from('conversation_messages')
-    .select('*')
-    .eq('conversation_id', conversationId)
-    .order('sent_at');
-  if (error) throw error;
-  return data ?? [];
+/** Timeline da conversa em ordem cronológica estável (ver compareTimeline em transcript.ts). */
+export type TimelineMessage = Pick<
+  ConversationMessage,
+  'id' | 'external_id' | 'sender' | 'sender_name' | 'message' | 'message_type' | 'sent_at' | 'received_seq'
+>;
+
+export async function fetchConversationMessages(conversationId: string): Promise<TimelineMessage[]> {
+  return fetchAllRows<TimelineMessage>((from, to) =>
+    supabase
+      .from('conversation_messages')
+      .select('id, external_id, sender, sender_name, message, message_type, sent_at, received_seq')
+      .eq('conversation_id', conversationId)
+      .order('sent_at', { ascending: true })
+      .order('received_seq', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to)
+  );
 }
 
 export async function fetchGoals(): Promise<Goals> {
@@ -175,6 +184,8 @@ export async function updatePanelSettings(
 export interface SellerPerformance {
   seller: Seller;
   sold: number;
+  devicesSold: number;
+  accessoriesSold: number;
   conversion: number;
 }
 
@@ -182,11 +193,28 @@ export interface SellerPerformance {
 export function computeSellerPerformance(
   sellers: Seller[],
   sales: Sale[],
-  conversations: Conversation[]
+  conversations: Conversation[],
+  products?: Product[]
 ): SellerPerformance[] {
   const soldBySeller = new Map<string, number>();
+  const devicesSoldBySeller = new Map<string, number>();
+  const accessoriesSoldBySeller = new Map<string, number>();
+  const productMap = products ? new Map(products.map((p) => [p.id, p])) : null;
+
   for (const sale of sales) {
-    soldBySeller.set(sale.seller_id, (soldBySeller.get(sale.seller_id) ?? 0) + sale.quantity);
+    const qty = sale.quantity;
+    soldBySeller.set(sale.seller_id, (soldBySeller.get(sale.seller_id) ?? 0) + qty);
+
+    if (productMap) {
+      const prod = productMap.get(sale.product_id);
+      if (prod) {
+        if (prod.category === 'Aparelhos') {
+          devicesSoldBySeller.set(sale.seller_id, (devicesSoldBySeller.get(sale.seller_id) ?? 0) + qty);
+        } else if (prod.category === 'Acessórios') {
+          accessoriesSoldBySeller.set(sale.seller_id, (accessoriesSoldBySeller.get(sale.seller_id) ?? 0) + qty);
+        }
+      }
+    }
   }
 
   const conversationStatsBySeller = new Map<string, { success: number; total: number }>();
@@ -203,6 +231,8 @@ export function computeSellerPerformance(
     return {
       seller,
       sold: soldBySeller.get(seller.id) ?? 0,
+      devicesSold: devicesSoldBySeller.get(seller.id) ?? 0,
+      accessoriesSold: accessoriesSoldBySeller.get(seller.id) ?? 0,
       conversion: stats && stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0,
     };
   });

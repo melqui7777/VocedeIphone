@@ -1,0 +1,5 @@
+# Só o frontend vai para a Vercel. Edge Functions e migrações são publicadas no Supabase.
+supabase
+*.test.ts
+frontend-specification.md.md
+ui-reference.jpg.jpg

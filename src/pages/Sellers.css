@@ -1,0 +1,403 @@
+.sellers-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+/* Header & Controls */
+.sellers-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.sellers-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 5px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .sellers-month-nav {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sellers-month-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sellers-month-arrow:hover:not(:disabled) {
+  background: #ffffff;
+  color: var(--text-dark);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .sellers-month-arrow:hover:not(:disabled) {
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.sellers-month-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.sellers-month-select {
+  border: none;
+  background: transparent;
+  color: var(--text-dark);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.sellers-month-select:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .sellers-month-select:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sellers-tabs-container {
+  display: flex;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 5px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .sellers-tabs-container {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.seller-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.seller-tab-btn:hover {
+  color: var(--text-dark);
+}
+
+.seller-tab-btn.active {
+  background: #ffffff;
+  color: var(--text-dark);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .seller-tab-btn.active {
+  background: #1e293b;
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Highlights / Leaders Podium Row */
+.sellers-leaders-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.leader-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.leader-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+}
+
+.leader-card.active-leader {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, rgba(10, 37, 255, 0.04) 0%, rgba(10, 37, 255, 0.01) 100%);
+}
+
+[data-theme="dark"] .leader-card.active-leader {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.02) 100%);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.leader-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.leader-icon-badge.iphones {
+  background: rgba(10, 37, 255, 0.1);
+  color: #0a25ff;
+}
+
+[data-theme="dark"] .leader-icon-badge.iphones {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.leader-icon-badge.accessories {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+[data-theme="dark"] .leader-icon-badge.accessories {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.leader-icon-badge.total {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+[data-theme="dark"] .leader-icon-badge.total {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.leader-icon-badge.conversion {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+}
+
+[data-theme="dark"] .leader-icon-badge.conversion {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+}
+
+.leader-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.leader-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.leader-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leader-score {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Seller Card Styles */
+.seller-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.seller-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.seller-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.seller-rank-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 100px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 14px;
+}
+
+.seller-card.rank-1 {
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.12);
+}
+
+[data-theme="dark"] .seller-card.rank-1 {
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 4px 24px rgba(245, 158, 11, 0.15);
+}
+
+.seller-header-info {
+  margin-bottom: 14px;
+}
+
+.seller-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.seller-role {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Stats Breakdown Box */
+.seller-stats-box {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+[data-theme="dark"] .seller-stats-box {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.seller-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 2px 0;
+}
+
+.seller-stat-row.highlight-metric {
+  background: rgba(10, 37, 255, 0.08);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .seller-stat-row.highlight-metric {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.seller-stat-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.seller-stat-row.highlight-metric .seller-stat-label {
+  color: var(--text-dark);
+  font-weight: 600;
+}
+
+.seller-stat-val {
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.seller-stat-row.highlight-metric .seller-stat-val {
+  color: var(--primary);
+  font-size: 14px;
+}
+
+.seller-btn-report {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+/* Responsive */
+@media (max-width: 1300px) {
+  .sellers-leaders-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .seller-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .seller-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .sellers-leaders-grid {
+    grid-template-columns: 1fr;
+  }
+  .seller-grid {
+    grid-template-columns: 1fr;
+  }
+}

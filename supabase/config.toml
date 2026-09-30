@@ -1,0 +1,19 @@
+# Configuração versionada das Edge Functions (usada por `supabase functions deploy`).
+# Funções chamadas por serviços externos ou por si mesmas (encadeamento) não recebem JWT do
+# Supabase — são protegidas pelo secret na query string (KOMMO_WEBHOOK_SECRET / MercadoPhone).
+project_id = "kcbjaknpaezmjiafdgpe"
+
+[functions.kommo-webhook]
+verify_jwt = false
+
+[functions.kommo-reprocess]
+verify_jwt = false
+
+[functions.kommo-audit]
+verify_jwt = false
+
+[functions.kommo-sync-events]
+verify_jwt = false
+
+[functions.mercadophone-webhook]
+verify_jwt = false

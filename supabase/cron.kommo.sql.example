@@ -1,0 +1,34 @@
+-- Agendamentos da integração Kommo (pg_cron + pg_net). Rodar no SQL Editor trocando <SECRET> pelo
+-- KOMMO_WEBHOOK_SECRET. Não versionar o secret: este arquivo é só o modelo do que está em produção.
+-- cron.schedule com o mesmo nome substitui o job existente.
+
+-- Retenta eventos do webhook que falharam (processed = false).
+select cron.schedule('kommo-reprocess-failed', '*/10 * * * *', $$
+  select net.http_post(
+    url := 'https://kcbjaknpaezmjiafdgpe.supabase.co/functions/v1/kommo-reprocess?secret=<SECRET>',
+    headers := '{"Content-Type": "application/json"}'::jsonb,
+    body := '{"all": false}'::jsonb,
+    timeout_milliseconds := 150000
+  );
+$$);
+
+-- Mensagens do atendente (marcadores): eventos de chat da conta toda na última hora (+1h de margem).
+select cron.schedule('kommo-sync-events-recent', '*/5 * * * *', $$
+  select net.http_post(
+    url := 'https://kcbjaknpaezmjiafdgpe.supabase.co/functions/v1/kommo-sync-events?secret=<SECRET>',
+    headers := '{"Content-Type": "application/json"}'::jsonb,
+    body := '{"global": true, "hours": 1}'::jsonb,
+    timeout_milliseconds := 150000
+  );
+$$);
+
+-- Rede de segurança diária: follow-ups e conversas criadas depois das mensagens do atendente
+-- (eventos de 50h em conversas com atividade nos últimos 60 dias).
+select cron.schedule('kommo-sync-events-followup', '40 6 * * *', $$
+  select net.http_post(
+    url := 'https://kcbjaknpaezmjiafdgpe.supabase.co/functions/v1/kommo-sync-events?secret=<SECRET>',
+    headers := '{"Content-Type": "application/json"}'::jsonb,
+    body := '{"hours": 50, "conversation_days": 60}'::jsonb,
+    timeout_milliseconds := 150000
+  );
+$$);

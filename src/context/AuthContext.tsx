@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 interface AuthContextType {
   session: Session | null;
@@ -16,21 +16,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    let mounted = true;
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setLoading(false);
-    });
+    // Safety fallback: ensure loading never gets stuck
+    const fallbackTimer = setTimeout(() => {
+      if (mounted && loading) {
+        setLoading(false);
+      }
+    }, 1500);
 
-    return () => subscription.subscription.unsubscribe();
+    async function initAuth() {
+      if (!isSupabaseConfigured) {
+        if (mounted) setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.warn('Supabase auth getSession warning:', error.message);
+        }
+        if (mounted) {
+          setSession(data?.session ?? null);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.warn('Failed to load session:', err);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    initAuth();
+
+    let unsubscribe = () => {};
+    try {
+      if (isSupabaseConfigured) {
+        const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
+          if (mounted) {
+            setSession(newSession);
+            setLoading(false);
+          }
+        });
+        unsubscribe = () => subscription.subscription.unsubscribe();
+      }
+    } catch (err) {
+      console.warn('Failed to listen to auth state changes:', err);
+    }
+
+    return () => {
+      mounted = false;
+      clearTimeout(fallbackTimer);
+      unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      if (isSupabaseConfigured) {
+        await supabase.auth.signOut();
+      }
+    } catch (err) {
+      console.warn('Sign out error:', err);
+    } finally {
+      setSession(null);
+    }
   };
 
   return (
@@ -47,3 +98,4 @@ export function useAuth() {
   }
   return context;
 }
+

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { ShaderBackground } from '../components/ShaderBackground';
 import logoImg from '../assets/logo.png';
@@ -23,10 +23,22 @@ export function Login() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setSubmitting(false);
-    if (error) {
-      setError('Email ou senha inválidos.');
+    
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      setSubmitting(false);
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          setError('Email ou senha incorretos. Verifique se digitou corretamente.');
+        } else if (error.message.includes('Email not confirmed')) {
+          setError('Email não confirmado no Supabase. Habilite "Auto Confirm" no painel.');
+        } else {
+          setError(`Erro ao autenticar: ${error.message}`);
+        }
+      }
+    } catch (err: any) {
+      setSubmitting(false);
+      setError(err?.message || 'Erro de conexão com o Supabase.');
     }
   };
 
@@ -36,6 +48,12 @@ export function Login() {
       <div className="login-card">
         <img src={logoImg} alt="Você de iPhone" className="login-logo" />
         <form className="login-form" onSubmit={handleSubmit}>
+          {!isSupabaseConfigured && (
+            <div className="login-error">
+              Sistema sem configuração do Supabase. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nas
+              variáveis de ambiente (na Vercel: Settings → Environment Variables) e faça um novo deploy.
+            </div>
+          )}
           {error && <div className="login-error">{error}</div>}
           <div className="login-field">
             <label htmlFor="email">Email</label>
@@ -45,6 +63,7 @@ export function Login() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="seuemail@exemplo.com"
               required
             />
           </div>
@@ -56,10 +75,11 @@ export function Login() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Sua senha"
               required
             />
           </div>
-          <button type="submit" className="btn-primary login-submit" disabled={submitting}>
+          <button type="submit" className="btn-primary login-submit" disabled={submitting || !isSupabaseConfigured}>
             {submitting ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
@@ -67,3 +87,5 @@ export function Login() {
     </div>
   );
 }
+
+

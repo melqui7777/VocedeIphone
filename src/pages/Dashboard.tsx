@@ -77,7 +77,7 @@ export function Dashboard() {
         .sort((a, b) => b.qty - a.qty)
         .slice(0, 3);
 
-      const performance = computeSellerPerformance(sellers, monthSales, conversations);
+      const performance = computeSellerPerformance(sellers, monthSales, conversations, products);
       const topSellers = [...performance].sort((a, b) => b.sold - a.sold).slice(0, 3);
       const topConversion = [...performance].sort((a, b) => b.conversion - a.conversion).slice(0, 3);
 

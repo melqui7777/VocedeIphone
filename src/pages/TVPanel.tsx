@@ -50,7 +50,7 @@ export function TVPanel() {
       const weeklyTarget = goals.weekly_devices_target + goals.weekly_accessories_target;
       const weeklySold = sales.reduce((sum, s) => sum + s.quantity, 0);
 
-      const performance = computeSellerPerformance(sellers, sales, conversations);
+      const performance = computeSellerPerformance(sellers, sales, conversations, products);
       const topSales = [...performance].sort((a, b) => b.sold - a.sold).slice(0, 3);
       const topConversion = [...performance].sort((a, b) => b.conversion - a.conversion).slice(0, 3);
 
