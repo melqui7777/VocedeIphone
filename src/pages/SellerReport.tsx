@@ -9,6 +9,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip
 } from 'recharts';
 import { ConversationSummaryModal, type ConversationData, type ChatMessage } from '../components/ConversationSummaryModal';
+import { SoldProductsModal, type ProductTypeFilter } from '../components/SoldProductsModal';
+import { SellerAvatar } from '../components/SellerAvatar';
 import { useTheme } from '../context/ThemeContext';
 import {
   fetchSellerById,
@@ -16,6 +18,7 @@ import {
   fetchConversationsBySeller,
   fetchConversationMessages,
   fetchProducts,
+  classifyProductCategory,
   getMonthRange,
 } from '../lib/api';
 import { buildTranscript } from '../lib/transcript';
@@ -55,6 +58,7 @@ export function SellerReport() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [selectedConversation, setSelectedConversation] = useState<ConversationData | null>(null);
+  const [soldProductsCategory, setSoldProductsCategory] = useState<ProductTypeFilter | null>(null);
   const [data, setData] = useState<ReportData | null>(null);
 
   useEffect(() => {
@@ -71,13 +75,13 @@ export function SellerReport() {
       const productMap = new Map(products.map((p) => [p.id, p]));
       const sellerSales = monthSales.filter((s) => s.seller_id === id);
 
-      const productsSold = sellerSales.reduce((sum, s) => sum + s.quantity, 0);
       const devicesSold = sellerSales
-        .filter((s) => productMap.get(s.product_id)?.category === 'Aparelhos')
+        .filter((s) => classifyProductCategory(productMap.get(s.product_id)?.name) === 'Aparelhos')
         .reduce((sum, s) => sum + s.quantity, 0);
       const accessoriesSold = sellerSales
-        .filter((s) => productMap.get(s.product_id)?.category === 'Acessórios')
+        .filter((s) => classifyProductCategory(productMap.get(s.product_id)?.name) === 'Acessórios' && Number(s.amount) > 0)
         .reduce((sum, s) => sum + s.quantity, 0);
+      const productsSold = devicesSold + accessoriesSold;
 
       const success = conversations.filter((c) => c.result_type === 'success').length;
       const lost = conversations.filter((c) => c.result_type === 'loss').length;
@@ -178,26 +182,59 @@ export function SellerReport() {
           <Link to="/vendedores" className="btn-primary" style={{backgroundColor: 'transparent', color: 'var(--text-dark)', border: '1px solid var(--border-color)'}}>
             <ArrowLeft size={16} /> Voltar
           </Link>
-          <h1 className="h1">Relatório do Vendedor{data ? `: ${data.seller.name}` : ''}</h1>
+          <div className="flex-center gap-3">
+            {data && (
+              <SellerAvatar
+                name={data.seller.name}
+                photoUrl={data.seller.photo_url}
+                size="md"
+              />
+            )}
+            <h1 className="h1">Relatório do Vendedor{data ? `: ${data.seller.name}` : ''}</h1>
+          </div>
         </div>
       </div>
 
       {/* Top Metric Cards */}
       <div className="seller-metrics-grid">
-        <div className="seller-kpi-card">
+        <div
+          className="seller-kpi-card clickable"
+          onClick={() => setSoldProductsCategory('Aparelhos')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSoldProductsCategory('Aparelhos')}
+          title="Clique para ver os iPhones vendidos"
+        >
           <Smartphone size={22} className="seller-kpi-icon" style={{ color: 'var(--primary)' }} />
           <span className="seller-kpi-value">{data?.devicesSold ?? 0}</span>
           <span className="seller-kpi-label">IPHONES</span>
+          <span className="seller-kpi-hint">Ver detalhes →</span>
         </div>
-        <div className="seller-kpi-card">
+        <div
+          className="seller-kpi-card clickable"
+          onClick={() => setSoldProductsCategory('Acessórios')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSoldProductsCategory('Acessórios')}
+          title="Clique para ver os Acessórios vendidos"
+        >
           <Headphones size={22} className="seller-kpi-icon" style={{ color: '#10B981' }} />
           <span className="seller-kpi-value">{data?.accessoriesSold ?? 0}</span>
           <span className="seller-kpi-label">ACESSÓRIOS</span>
+          <span className="seller-kpi-hint">Ver detalhes →</span>
         </div>
-        <div className="seller-kpi-card">
+        <div
+          className="seller-kpi-card clickable"
+          onClick={() => setSoldProductsCategory('all')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSoldProductsCategory('all')}
+          title="Clique para ver todos os produtos vendidos"
+        >
           <ShoppingBag size={22} className="seller-kpi-icon" />
           <span className="seller-kpi-value">{data?.productsSold ?? 0}</span>
           <span className="seller-kpi-label">TOTAL PRODUTOS</span>
+          <span className="seller-kpi-hint">Ver detalhes →</span>
         </div>
         <div className="seller-kpi-card">
           <TrendingUp size={22} className="seller-kpi-icon" />
@@ -350,6 +387,16 @@ export function SellerReport() {
       <ConversationSummaryModal
         conversation={selectedConversation}
         onClose={handleCloseSummary}
+      />
+
+      {/* Sold Products Detailed Modal */}
+      <SoldProductsModal
+        isOpen={soldProductsCategory !== null}
+        onClose={() => setSoldProductsCategory(null)}
+        initialCategory={soldProductsCategory ?? 'all'}
+        initialSellerId={id}
+        sellerName={data?.seller.name}
+        initialPeriod="month"
       />
     </div>
   );

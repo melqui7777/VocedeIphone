@@ -27,7 +27,7 @@ const navItems = [
   { path: '/vendedores', label: 'Vendedores', icon: Users },
   { path: '/estoque', label: 'Estoque', icon: Package },
   { path: '/metas', label: 'Metas', icon: Target },
-  { path: '/tv', label: 'Painel da Loja', icon: MonitorPlay },
+  { path: '/painel-loja', label: 'Painel da Loja', icon: MonitorPlay, openInNewTab: true },
   { path: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
 
@@ -45,6 +45,22 @@ export function Sidebar() {
         <ul>
           {navItems.map((item) => {
             const Icon = item.icon;
+            if (item.openInNewTab) {
+              return (
+                <li key={item.path}>
+                  <a 
+                    href={item.path} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="nav-link"
+                    title="Abrir Painel da Loja em nova guia"
+                  >
+                    <Icon size={20} />
+                    <span>{item.label}</span>
+                  </a>
+                </li>
+              );
+            }
             return (
               <li key={item.path}>
                 <NavLink 

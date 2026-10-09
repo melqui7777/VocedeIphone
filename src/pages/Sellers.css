@@ -289,6 +289,14 @@
   box-shadow: 0 4px 24px rgba(245, 158, 11, 0.15);
 }
 
+.seller-card-avatar-wrap {
+  margin-bottom: 12px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .seller-header-info {
   margin-bottom: 14px;
 }

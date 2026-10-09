@@ -1,8 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { Trophy, Moon, Sun } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { 
+  Trophy, 
+  Target, 
+  TrendingUp, 
+  Users, 
+  Smartphone, 
+  Headphones, 
+  Package,
+  Maximize2, 
+  Minimize2, 
+  Calendar, 
+  Sparkles,
+  Sun,
+  Moon
+} from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { useAuth } from '../context/AuthContext';
 import {
   fetchGoals,
   fetchSalesInRange,
@@ -10,12 +22,19 @@ import {
   fetchVisibleSellers,
   fetchAllConversations,
   computeSellerPerformance,
+  classifyProductCategory,
+  isDeviceProduct,
+  isCountableSale,
+  isCountableAccessorySale,
   getWeekRange,
   type SellerPerformance,
 } from '../lib/api';
+import type { Sale } from '../lib/database.types';
+import { LeaderboardPodium, type LeaderboardRanking } from '@/components/ui/leaderboard-podium';
+import trophyGold from '../assets/trophy-gold.png';
+import './TVPanel.css';
 
 const MONTH_ABBR = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-const RANK_LABELS = ['1º', '2º', '3º'];
 
 interface TVPanelData {
   weeklySold: number;
@@ -24,194 +43,353 @@ interface TVPanelData {
   remaining: number;
   percent: number;
   topSales: SellerPerformance[];
-  topConversion: SellerPerformance[];
   topProduct: string;
+  topProductQty?: number;
+  topDevice: string;
+  topDeviceQty?: number;
   topAccessory: string;
+  topAccessoryQty?: number;
 }
 
 export function TVPanel() {
   const { theme, toggleTheme } = useTheme();
-  const { signOut } = useAuth();
-  const navigate = useNavigate();
-  const isDark = theme === 'dark';
-
   const [data, setData] = useState<TVPanelData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const now = new Date();
 
   useEffect(() => {
+    let isMounted = true;
     const { start, end } = getWeekRange(new Date());
+
+    setLoading(true);
     Promise.all([
       fetchGoals(),
       fetchSalesInRange(start, end),
       fetchProducts(),
       fetchVisibleSellers(),
       fetchAllConversations(),
-    ]).then(([goals, sales, products, sellers, conversations]) => {
-      const weeklyTarget = goals.weekly_devices_target + goals.weekly_accessories_target;
-      const weeklySold = sales.reduce((sum, s) => sum + s.quantity, 0);
+    ])
+      .then(([goals, sales, products, sellers, conversations]) => {
+        if (!isMounted) return;
 
-      const performance = computeSellerPerformance(sellers, sales, conversations, products);
-      const topSales = [...performance].sort((a, b) => b.sold - a.sold).slice(0, 3);
-      const topConversion = [...performance].sort((a, b) => b.conversion - a.conversion).slice(0, 3);
+        const productMap = new Map(products.map((p) => [p.id, p]));
+        const checkCountable = (s: Sale) => {
+          const prod = productMap.get(s.product_id);
+          return isCountableSale(s, prod?.name);
+        };
 
-      const productMap = new Map(products.map((p) => [p.id, p]));
-      const qtyByProduct = new Map<string, number>();
-      sales.forEach((s) => qtyByProduct.set(s.product_id, (qtyByProduct.get(s.product_id) ?? 0) + s.quantity));
-      const rankedProducts = [...qtyByProduct.entries()]
-        .map(([id, qty]) => ({ product: productMap.get(id), qty }))
-        .filter((x): x is { product: NonNullable<typeof x.product>; qty: number } => Boolean(x.product))
-        .sort((a, b) => b.qty - a.qty);
+        const weeklyTarget = goals.weekly_devices_target + goals.weekly_accessories_target;
+        const weeklySold = sales.filter(checkCountable).reduce((sum, s) => sum + s.quantity, 0);
 
-      setData({
-        weeklySold,
-        weeklyTarget,
-        metaAtingida: weeklyTarget > 0 && weeklySold >= weeklyTarget,
-        remaining: Math.max(0, weeklyTarget - weeklySold),
-        percent: weeklyTarget > 0 ? Math.min(100, Math.round((weeklySold / weeklyTarget) * 100)) : 0,
-        topSales,
-        topConversion,
-        topProduct: rankedProducts[0]?.product.name ?? '-',
-        topAccessory: rankedProducts.find((x) => x.product.category === 'Acessórios')?.product.name ?? '-',
+        const performance = computeSellerPerformance(sellers, sales, conversations, products);
+        const topSales = [...performance].sort((a, b) => b.sold - a.sold).slice(0, 3);
+
+        // 1. Produto Mais Vendido (Geral - Aparelhos e Acessórios agrupados por nome)
+        const qtyByProduct = new Map<string, { name: string; qty: number; revenue: number }>();
+        sales.filter(checkCountable).forEach((s) => {
+          const prod = productMap.get(s.product_id);
+          const name = prod?.name?.trim() ?? 'Produto sem nome';
+          const prev = qtyByProduct.get(name) ?? { name, qty: 0, revenue: 0 };
+          qtyByProduct.set(name, {
+            name,
+            qty: prev.qty + s.quantity,
+            revenue: prev.revenue + (Number(s.amount) || 0) * s.quantity,
+          });
+        });
+
+        const rankedProducts = [...qtyByProduct.values()]
+          .sort((a, b) => b.qty - a.qty || b.revenue - a.revenue);
+
+        // 2. Aparelho Mais Vendido (SOMENTE produtos que começam com 'iPhone', agrupados por modelo)
+        const deviceSales = sales.filter((s) => {
+          const prod = productMap.get(s.product_id);
+          return isDeviceProduct(prod?.name);
+        });
+        const qtyByDevice = new Map<string, { name: string; qty: number; revenue: number }>();
+        deviceSales.forEach((s) => {
+          const prod = productMap.get(s.product_id);
+          const name = prod?.name?.trim() ?? 'Aparelho sem nome';
+          const prev = qtyByDevice.get(name) ?? { name, qty: 0, revenue: 0 };
+          qtyByDevice.set(name, {
+            name,
+            qty: prev.qty + s.quantity,
+            revenue: prev.revenue + (Number(s.amount) || 0) * s.quantity,
+          });
+        });
+        const rankedDevices = [...qtyByDevice.values()]
+          .sort((a, b) => b.qty - a.qty || b.revenue - a.revenue);
+
+        // 3. Acessório Mais Vendido (apenas pagos / valor > 0, agrupados por nome)
+        const accessorySales = sales.filter((s) => {
+          const prod = productMap.get(s.product_id);
+          return isCountableAccessorySale(s, prod?.name);
+        });
+        const qtyByAccessory = new Map<string, { name: string; qty: number; revenue: number }>();
+        accessorySales.forEach((s) => {
+          const prod = productMap.get(s.product_id);
+          const name = prod?.name?.trim() ?? 'Acessório sem nome';
+          const prev = qtyByAccessory.get(name) ?? { name, qty: 0, revenue: 0 };
+          qtyByAccessory.set(name, {
+            name,
+            qty: prev.qty + s.quantity,
+            revenue: prev.revenue + (Number(s.amount) || 0) * s.quantity,
+          });
+        });
+        const rankedAccessories = [...qtyByAccessory.values()]
+          .sort((a, b) => b.qty - a.qty || b.revenue - a.revenue);
+
+        setData({
+          weeklySold,
+          weeklyTarget,
+          metaAtingida: weeklyTarget > 0 && weeklySold >= weeklyTarget,
+          remaining: Math.max(0, weeklyTarget - weeklySold),
+          percent: weeklyTarget > 0 ? Math.min(100, Math.round((weeklySold / weeklyTarget) * 100)) : 0,
+          topSales,
+          topProduct: rankedProducts[0]?.name ?? 'Sem vendas',
+          topProductQty: rankedProducts[0]?.qty ?? 0,
+          topDevice: rankedDevices[0]?.name ?? 'Nenhum aparelho vendido',
+          topDeviceQty: rankedDevices[0]?.qty ?? 0,
+          topAccessory: rankedAccessories[0]?.name ?? 'Sem vendas de acessórios',
+          topAccessoryQty: rankedAccessories[0]?.qty ?? 0,
+        });
+      })
+      .catch((err) => {
+        console.error('Erro ao carregar dados do Painel da Loja:', err);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
       });
-    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
   const metaAtingida = data?.metaAtingida ?? false;
 
-  const bgGradient = isDark
-    ? 'linear-gradient(180deg, #0A0E17 0%, #0D111C 18%, #131926 45%, #0B101D 70%, #05080F 100%)'
-    : 'linear-gradient(180deg, #c4ded2 0%, #76a0a8 18%, #365e6d 45%, #183745 70%, #0b1a26 100%)';
-
   return (
-    <div style={{
-      width: '100vw', height: '100vh',
-      background: bgGradient, color: '#fff',
-      padding: '40px', display: 'flex', flexDirection: 'column', gap: '32px',
-      fontFamily: 'var(--font-family)', overflow: 'hidden'
-    }}>
-      <div style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center'}}>
-        <div style={{display: 'flex', gap: '20px', alignItems: 'center'}}>
-          <div className={`sleek-theme-switch ${isDark ? 'dark-active' : ''}`} onClick={toggleTheme} title="Alternar Modo Claro/Escuro" style={{cursor: 'pointer'}}>
+    <div className="store-panel-container" ref={containerRef}>
+      {/* Top Header */}
+      <div className="store-panel-header">
+        <div className="store-panel-header-badges">
+          <div 
+            className={`sleek-theme-switch ${theme === 'dark' ? 'dark-active' : ''}`} 
+            onClick={toggleTheme} 
+            title="Alternar Modo Claro/Escuro"
+            style={{ cursor: 'pointer' }}
+          >
             <Sun size={13} color="#ffffff" className="switch-icon-sun" />
             <Moon size={13} color="#ffffff" className="switch-icon-moon" />
             <div className="switch-thumb" />
           </div>
 
-          <span style={{fontSize: '24px', color: 'rgba(255,255,255,0.6)'}}>
-            {String(now.getDate()).padStart(2, '0')} {MONTH_ABBR[now.getMonth()]} {now.getFullYear()}
-          </span>
-          <a
-            href="/"
-            onClick={(e) => { e.preventDefault(); signOut().then(() => navigate('/')); }}
-            style={{color: 'rgba(255,255,255,0.4)', textDecoration: 'none', cursor: 'pointer'}}
+          <div className="live-indicator">
+            <span className="live-dot" />
+            Ao Vivo
+          </div>
+
+          <div className="store-panel-date-badge">
+            <Calendar size={16} color="var(--primary)" />
+            <span>
+              {String(now.getDate()).padStart(2, '0')} {MONTH_ABBR[now.getMonth()]} {now.getFullYear()}
+            </span>
+          </div>
+
+          <button 
+            className="btn-fullscreen" 
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Sair da tela cheia" : "Modo tela cheia"}
           >
-            Sair
-          </a>
+            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            <span>{isFullscreen ? 'Janela' : 'Tela Cheia'}</span>
+          </button>
         </div>
       </div>
 
-
-      <div style={{flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px'}}>
-
-        {/* Lado Esquerdo - Metas */}
-        <div style={{
-          backgroundColor: metaAtingida ? 'rgba(24, 55, 75, 0.6)' : 'rgba(255,255,255,0.05)',
-          borderRadius: '32px', padding: '40px', display: 'flex', flexDirection: 'column',
-          justifyContent: 'center', alignItems: 'center', textAlign: 'center',
-          border: metaAtingida ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.1)',
-          borderBottom: metaAtingida ? '2px solid rgba(60, 130, 255, 0.8)' : '1px solid rgba(255,255,255,0.1)',
-          boxShadow: metaAtingida ? 'inset 0px -80px 100px -40px rgba(60, 130, 255, 0.4), 0 24px 48px rgba(0,0,0,0.4)' : 'none',
-          backdropFilter: 'blur(24px)',
-          transition: 'all 0.5s'
-        }}>
-          {metaAtingida ? (
-            <>
-              <Trophy size={100} color="#fff" style={{marginBottom: '24px'}} />
-              <h2 style={{fontSize: '56px', fontWeight: 800, marginBottom: '16px'}}>META ATINGIDA!</h2>
-              <p style={{fontSize: '24px', opacity: 0.9}}>A equipe superou a meta da semana!</p>
-            </>
-          ) : (
-            <>
-              <h2 style={{fontSize: '32px', color: 'rgba(255,255,255,0.6)', marginBottom: '16px'}}>Meta da Semana</h2>
-              <div style={{fontSize: '80px', fontWeight: 800, marginBottom: '40px'}}>
-                {(data?.weeklySold ?? 0).toLocaleString('pt-BR')} / {(data?.weeklyTarget ?? 0).toLocaleString('pt-BR')}
-              </div>
-
-              <div style={{width: '100%', height: '24px', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '12px', overflow: 'hidden'}}>
-                <div style={{width: `${data?.percent ?? 0}%`, height: '100%', backgroundColor: 'var(--primary)'}}></div>
-              </div>
-              <p style={{marginTop: '16px', fontSize: '20px', color: 'rgba(255,255,255,0.6)'}}>Faltam {(data?.remaining ?? 0).toLocaleString('pt-BR')} vendas</p>
-            </>
-          )}
+      {loading ? (
+        <div className="store-panel-grid">
+          <div className="skeleton-card" style={{ minHeight: '480px' }} />
+          <div className="store-panel-right-col">
+            <div className="store-rankings-row">
+              <div className="skeleton-card" style={{ minHeight: '260px' }} />
+            </div>
+            <div className="store-bottom-row">
+              <div className="skeleton-card" style={{ minHeight: '100px' }} />
+              <div className="skeleton-card" style={{ minHeight: '100px' }} />
+            </div>
+          </div>
         </div>
+      ) : (
+        <div className="store-panel-grid">
+          {/* Lado Esquerdo - Card de Meta */}
+          <div className={`store-goal-card ${metaAtingida ? 'goal-achieved' : ''}`}>
+            {metaAtingida ? (
+              <>
+                <div className="goal-card-tag">
+                  <img src={trophyGold} alt="" className="goal-tag-trophy-icon" />
+                  Meta Superada
+                </div>
+                <img 
+                  src={trophyGold} 
+                  alt="Meta Superada" 
+                  className="goal-trophy-image"
+                />
+                <h2 style={{ fontSize: '38px', fontWeight: 800, marginBottom: '12px', color: 'var(--text-dark)' }}>
+                  META ATINGIDA!
+                </h2>
+                <p style={{ fontSize: '18px', color: 'var(--text-muted)', maxWidth: '380px', marginBottom: '24px' }}>
+                  A equipe superou a meta semanal com maestria!
+                </p>
+                <div className="goal-numbers-wrapper">
+                  <span className="goal-current-num" style={{ color: '#10B981' }}>
+                    {(data?.weeklySold ?? 0).toLocaleString('pt-BR')}
+                  </span>
+                  <span className="goal-separator">/</span>
+                  <span className="goal-target-num">
+                    {(data?.weeklyTarget ?? 0).toLocaleString('pt-BR')}
+                  </span>
+                </div>
+                <div className="goal-progress-bar-bg">
+                  <div 
+                    className="goal-progress-bar-fill achieved" 
+                    style={{ width: '100%' }} 
+                  />
+                </div>
+                <div className="goal-footer-info">
+                  <span>Concluído</span>
+                  <span className="goal-percent-badge" style={{ color: '#10B981' }}>
+                    {data?.percent ?? 100}%
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="goal-card-tag">
+                  <Target size={16} />
+                  Objetivo Semanal
+                </div>
+                <h2 className="goal-card-title">Meta da Semana</h2>
+                
+                <div className="goal-numbers-wrapper">
+                  <span className="goal-current-num">
+                    {(data?.weeklySold ?? 0).toLocaleString('pt-BR')}
+                  </span>
+                  <span className="goal-separator">/</span>
+                  <span className="goal-target-num">
+                    {(data?.weeklyTarget ?? 0).toLocaleString('pt-BR')}
+                  </span>
+                </div>
 
-        {/* Lado Direito - Destaques */}
-        <div style={{display: 'flex', flexDirection: 'column', gap: '32px'}}>
+                <div className="goal-progress-bar-bg">
+                  <div 
+                    className="goal-progress-bar-fill" 
+                    style={{ width: `${data?.percent ?? 0}%` }} 
+                  />
+                </div>
 
-          <div style={{display: 'flex', gap: '32px', flex: 1}}>
-            {/* Top 3 Vendas */}
-            <div style={{
-              flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '24px', padding: '32px',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              <h3 style={{fontSize: '20px', color: 'rgba(255,255,255,0.6)', marginBottom: '24px'}}>Top 3 - Vendas</h3>
-              <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                {(data?.topSales ?? []).map((item, i) => (
-                  <div key={item.seller.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)'}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                      <span style={{fontSize: '18px', fontWeight: 700, color: 'rgba(255,255,255,0.5)'}}>{RANK_LABELS[i]}</span>
-                      <span style={{fontSize: '20px', fontWeight: 600}}>{item.seller.name}</span>
-                    </div>
-                    <span style={{fontSize: '22px', fontWeight: 700, color: 'var(--primary)'}}>{item.sold}</span>
+                <div className="goal-footer-info">
+                  <span>Faltam <strong>{(data?.remaining ?? 0).toLocaleString('pt-BR')}</strong> vendas</span>
+                  <span className="goal-percent-badge">{data?.percent ?? 0}%</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Lado Direito - Rankings e Produtos */}
+          <div className="store-panel-right-col">
+            <div className="store-rankings-row">
+              {/* Top 3 Vendas - Pódio */}
+              <div className="store-ranking-card store-podium-card">
+                <div className="store-ranking-header">
+                  <Trophy size={18} color="var(--primary)" />
+                  <h3>Top Vendedores da Semana</h3>
+                </div>
+
+                {(data?.topSales ?? []).length > 0 ? (
+                  <div className="store-podium-wrapper">
+                    <LeaderboardPodium
+                      rankings={(data?.topSales ?? []).map((item, index) => ({
+                        userId: item.seller.id,
+                        userName: item.seller.name,
+                        rank: index + 1,
+                        value: item.sold,
+                        avatarUrl: item.seller.photo_url || null,
+                      }))}
+                      size="default"
+                      medalStyle="classic"
+                      showValue={true}
+                      showAvatar={true}
+                    />
                   </div>
-                ))}
-                {(!data || data.topSales.length === 0) && (
-                  <span style={{color: 'rgba(255,255,255,0.5)'}}>Sem vendas registradas esta semana.</span>
+                ) : (
+                  <span className="text-muted" style={{ textAlign: 'center', padding: '32px 0' }}>
+                    Sem vendas registradas nesta semana.
+                  </span>
                 )}
               </div>
             </div>
 
-            {/* Top 3 Conversão */}
-            <div style={{
-              flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '24px', padding: '32px',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              <h3 style={{fontSize: '20px', color: 'rgba(255,255,255,0.6)', marginBottom: '24px'}}>Top 3 - Conversão</h3>
-              <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                {(data?.topConversion ?? []).map((item, i) => (
-                  <div key={item.seller.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)'}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                      <span style={{fontSize: '18px', fontWeight: 700, color: 'rgba(255,255,255,0.5)'}}>{RANK_LABELS[i]}</span>
-                      <span style={{fontSize: '20px', fontWeight: 600}}>{item.seller.name}</span>
-                    </div>
-                    <span style={{fontSize: '22px', fontWeight: 700, color: 'var(--primary)'}}>{item.conversion}%</span>
-                  </div>
-                ))}
-                {(!data || data.topConversion.length === 0) && (
-                  <span style={{color: 'rgba(255,255,255,0.5)'}}>Sem dados de conversas ainda.</span>
-                )}
+            {/* Destaques de Aparelhos e Acessórios */}
+            <div className="store-bottom-row">
+              {/* Card 1: Aparelho Mais Vendido (iPhones) */}
+              <div className="store-stat-pill-card">
+                <div className="store-stat-icon-wrapper device">
+                  <Smartphone size={24} />
+                </div>
+                <div className="store-stat-info">
+                  <span className="store-stat-label">Aparelho Mais Vendido</span>
+                  <span className="store-stat-val" title={data?.topDevice}>
+                    {data?.topDevice ?? 'Nenhum aparelho vendido'}
+                  </span>
+                  {Boolean(data?.topDeviceQty && data.topDeviceQty > 0) && (
+                    <span className="store-stat-subtext">
+                      {data?.topDeviceQty} {data?.topDeviceQty === 1 ? 'unidade vendida' : 'unidades vendidas'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Card 2: Acessório Mais Vendido */}
+              <div className="store-stat-pill-card">
+                <div className="store-stat-icon-wrapper accessory">
+                  <Headphones size={24} />
+                </div>
+                <div className="store-stat-info">
+                  <span className="store-stat-label">Acessório Mais Vendido</span>
+                  <span className="store-stat-val" title={data?.topAccessory}>
+                    {data?.topAccessory ?? '-'}
+                  </span>
+                  {Boolean(data?.topAccessoryQty && data.topAccessoryQty > 0) && (
+                    <span className="store-stat-subtext">
+                      {data?.topAccessoryQty} {data?.topAccessoryQty === 1 ? 'unidade vendida' : 'unidades vendidas'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-
-          <div style={{display: 'flex', gap: '32px'}}>
-            <div style={{
-              flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '24px', padding: '24px',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              <h4 style={{fontSize: '18px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px'}}>Produto Mais Vendido</h4>
-              <div style={{fontSize: '28px', fontWeight: 700}}>{data?.topProduct ?? '-'}</div>
-            </div>
-            <div style={{
-              flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '24px', padding: '24px',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              <h4 style={{fontSize: '18px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px'}}>Acessório Mais Vendido</h4>
-              <div style={{fontSize: '28px', fontWeight: 700}}>{data?.topAccessory ?? '-'}</div>
-            </div>
-          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

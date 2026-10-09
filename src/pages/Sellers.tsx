@@ -11,8 +11,11 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  Camera,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { SellerAvatar } from '../components/SellerAvatar';
+import { SellerPhotoModal } from '../components/SellerPhotoModal';
 import {
   fetchVisibleSellers,
   fetchSalesInRange,
@@ -22,6 +25,7 @@ import {
   getMonthRange,
   type SellerPerformance,
 } from '../lib/api';
+import type { Seller } from '../lib/database.types';
 import './Sellers.css';
 
 type RankingType = 'iphones' | 'accessories' | 'sales' | 'conversion';
@@ -36,6 +40,7 @@ export function Sellers() {
   const [loading, setLoading] = useState(true);
   const [rankingType, setRankingType] = useState<RankingType>('iphones');
   const [viewMonth, setViewMonth] = useState<Date>(() => new Date());
+  const [editingPhotoSeller, setEditingPhotoSeller] = useState<Seller | null>(null);
 
   useEffect(() => {
     const { start, end } = getMonthRange(viewMonth);
@@ -220,9 +225,18 @@ export function Sellers() {
           className={`leader-card ${rankingType === 'iphones' ? 'active-leader' : ''}`}
           onClick={() => setRankingType('iphones')}
         >
-          <div className="leader-icon-badge iphones">
-            <Smartphone size={22} />
-          </div>
+          {leaderIphones?.seller?.photo_url ? (
+            <SellerAvatar
+              name={leaderIphones.seller.name}
+              photoUrl={leaderIphones.seller.photo_url}
+              size="sm"
+              rank={1}
+            />
+          ) : (
+            <div className="leader-icon-badge iphones">
+              <Smartphone size={22} />
+            </div>
+          )}
           <div className="leader-info">
             <span className="leader-label">Líder em iPhones</span>
             <span className="leader-name">{leaderIphones ? leaderIphones.seller.name : '—'}</span>
@@ -236,9 +250,18 @@ export function Sellers() {
           className={`leader-card ${rankingType === 'accessories' ? 'active-leader' : ''}`}
           onClick={() => setRankingType('accessories')}
         >
-          <div className="leader-icon-badge accessories">
-            <Headphones size={22} />
-          </div>
+          {leaderAccessories?.seller?.photo_url ? (
+            <SellerAvatar
+              name={leaderAccessories.seller.name}
+              photoUrl={leaderAccessories.seller.photo_url}
+              size="sm"
+              rank={1}
+            />
+          ) : (
+            <div className="leader-icon-badge accessories">
+              <Headphones size={22} />
+            </div>
+          )}
           <div className="leader-info">
             <span className="leader-label">Líder em Acessórios</span>
             <span className="leader-name">{leaderAccessories ? leaderAccessories.seller.name : '—'}</span>
@@ -252,9 +275,18 @@ export function Sellers() {
           className={`leader-card ${rankingType === 'sales' ? 'active-leader' : ''}`}
           onClick={() => setRankingType('sales')}
         >
-          <div className="leader-icon-badge total">
-            <Package size={22} />
-          </div>
+          {leaderTotal?.seller?.photo_url ? (
+            <SellerAvatar
+              name={leaderTotal.seller.name}
+              photoUrl={leaderTotal.seller.photo_url}
+              size="sm"
+              rank={1}
+            />
+          ) : (
+            <div className="leader-icon-badge total">
+              <Package size={22} />
+            </div>
+          )}
           <div className="leader-info">
             <span className="leader-label">Maior Volume Total</span>
             <span className="leader-name">{leaderTotal ? leaderTotal.seller.name : '—'}</span>
@@ -268,9 +300,18 @@ export function Sellers() {
           className={`leader-card ${rankingType === 'conversion' ? 'active-leader' : ''}`}
           onClick={() => setRankingType('conversion')}
         >
-          <div className="leader-icon-badge conversion">
-            <Sparkles size={22} />
-          </div>
+          {leaderConversion?.seller?.photo_url ? (
+            <SellerAvatar
+              name={leaderConversion.seller.name}
+              photoUrl={leaderConversion.seller.photo_url}
+              size="sm"
+              rank={1}
+            />
+          ) : (
+            <div className="leader-icon-badge conversion">
+              <Sparkles size={22} />
+            </div>
+          )}
           <div className="leader-info">
             <span className="leader-label">Maior Conversão</span>
             <span className="leader-name">{leaderConversion ? leaderConversion.seller.name : '—'}</span>
@@ -309,7 +350,17 @@ export function Sellers() {
                 {badge.text}
               </span>
 
-
+              {/* Avatar do Vendedor em Destaque */}
+              <div className="seller-card-avatar-wrap">
+                <SellerAvatar
+                  name={seller.name}
+                  photoUrl={seller.photo_url}
+                  size="xl"
+                  rank={rank}
+                  editable
+                  onEdit={() => setEditingPhotoSeller(seller)}
+                />
+              </div>
 
               <div className="seller-header-info">
                 <h2 className="seller-name">{seller.name}</h2>
@@ -364,6 +415,23 @@ export function Sellers() {
           );
         })}
       </div>
+
+      {/* Modal para Editar/Trocar/Remover Foto */}
+      {editingPhotoSeller && (
+        <SellerPhotoModal
+          seller={editingPhotoSeller}
+          onClose={() => setEditingPhotoSeller(null)}
+          onSaved={(updatedSeller) => {
+            setPerformance((prev) =>
+              prev.map((item) =>
+                item.seller.id === updatedSeller.id
+                  ? { ...item, seller: { ...item.seller, photo_url: updatedSeller.photo_url } }
+                  : item
+              )
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

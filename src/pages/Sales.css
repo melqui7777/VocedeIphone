@@ -1,167 +1,468 @@
 /* ============================================================
-   Stat cards (clickable)
+   Página de Vendas — Novo Layout Moderno e Limpo
    ============================================================ */
-.sales-stat-card {
-  cursor: pointer;
-  text-align: left;
+
+.sales-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
-  transition: all 0.2s ease;
+  animation: salesFadeIn 0.25s ease-out;
 }
 
-.sales-stat-card:hover {
-  border-color: var(--primary);
-  transform: translateY(-2px);
-}
-
-.sales-stat-card.active {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(10, 37, 255, 0.12);
-}
-
-[data-theme="dark"] .sales-stat-card.active {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+@keyframes salesFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ============================================================
-   "Vendas do Mês" — card navegável (mês/ano)
+   Header da Página & Filtro Principal de Data no Topo Direito
    ============================================================ */
-.sales-month-card {
-  cursor: default;
+.sales-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
-.sales-month-nav {
+.sales-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sales-header-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.sales-header-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 650px;
+  line-height: 1.5;
+}
+
+/* Container do Filtro de Data Superior Direito */
+.sales-date-filter-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-card);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.sales-date-filter-label {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding-left: 4px;
 }
 
-.sales-month-arrow {
-  width: 20px;
-  height: 20px;
+.sales-date-select {
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--text-dark);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.sales-date-select:hover,
+.sales-date-select:focus {
+  background-color: rgba(59, 130, 246, 0.08);
+  color: var(--primary);
+}
+
+.sales-custom-date-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--primary);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sales-custom-date-btn:hover {
+  background-color: var(--primary);
+  color: #fff;
+}
+
+/* ============================================================
+   3 Cards Principais Repaginados
+   ============================================================ */
+.sales-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.sales-metric-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.sales-metric-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .sales-metric-card:hover {
+  box-shadow: 0 12px 32px -6px rgba(0, 0, 0, 0.5);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.sales-metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.sales-metric-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sales-metric-icon-box.sales-total {
+  background-color: rgba(59, 130, 246, 0.12);
+  color: var(--primary);
+}
+
+.sales-metric-icon-box.device-top {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #10B981;
+}
+
+.sales-metric-icon-box.accessory-top {
+  background-color: rgba(168, 85, 247, 0.12);
+  color: #A855F7;
+}
+
+.sales-metric-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background-color: rgba(0, 0, 0, 0.04);
   color: var(--text-muted);
 }
 
-.sales-month-arrow:hover {
-  background: var(--bg-main);
-  color: var(--text-dark);
+[data-theme="dark"] .sales-metric-badge {
+  background-color: rgba(255, 255, 255, 0.06);
 }
 
-.sales-month-label {
-  font-size: 12px;
+.sales-metric-title {
+  font-size: 14px;
   font-weight: 600;
-  color: var(--primary);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  background: rgba(10, 37, 255, 0.08);
+  color: var(--text-muted);
+  margin-bottom: 8px;
 }
 
-[data-theme="dark"] .sales-month-label {
-  background: rgba(59, 130, 246, 0.15);
+.sales-metric-main-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-dark);
+  line-height: 1.2;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.sales-month-label:hover {
-  opacity: 0.8;
-}
-
-.sales-stat-value-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  width: 100%;
-}
-
-/* ============================================================
-   Seletor de mês/ano (popover "calendário de meses e anos")
-   ============================================================ */
-.sales-month-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding-bottom: 4px;
-}
-
-.sales-month-grid-item {
-  padding: 12px 0;
-  text-align: center;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+.sales-metric-subtext {
   font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 500;
-  color: var(--text-dark);
 }
 
-.sales-month-grid-item:hover {
-  border-color: var(--primary);
+.sales-metric-subtext-highlight {
+  font-weight: 700;
   color: var(--primary);
 }
 
-.sales-month-grid-item.selected {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-  font-weight: 600;
-}
-
 /* ============================================================
-   Filters bar
+   Barra de Filtros Secundários
    ============================================================ */
-.sales-filters {
+.sales-filters-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
   padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
 }
 
-.sales-filters-row {
-  display: flex;
-  flex-wrap: wrap;
+.sales-filters-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1.5fr;
   gap: 12px;
   align-items: center;
 }
 
-.sales-filters-row select {
+.sales-filters-grid select {
+  width: 100%;
   padding: 10px 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
-  background: var(--bg-card);
+  background-color: var(--bg-card);
   color: var(--text-dark);
   font-size: 14px;
-  min-width: 160px;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
-.sales-search {
-  flex: 1;
-  min-width: 220px;
-  margin-left: auto;
+.sales-filters-grid select:focus {
+  border-color: var(--primary);
+}
+
+.sales-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sales-search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.sales-search-input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  color: var(--text-dark);
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.sales-search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 /* ============================================================
-   View button (table row action)
+   Tabela de Vendas e Paginação
    ============================================================ */
+.sales-table-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sales-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.sales-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.sales-table thead th {
+  background-color: rgba(0, 0, 0, 0.02);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .sales-table thead th {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.sales-table tbody tr {
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.15s ease;
+}
+
+.sales-table tbody tr:hover {
+  background-color: rgba(59, 130, 246, 0.03);
+}
+
+[data-theme="dark"] .sales-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.sales-table tbody td {
+  padding: 16px 20px;
+  font-size: 14px;
+  color: var(--text-dark);
+  vertical-align: middle;
+}
+
+.product-name-cell {
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+/* Badges de Categoria */
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.category-badge.aparelhos {
+  background-color: rgba(59, 130, 246, 0.12);
+  color: var(--primary);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.category-badge.acessorios {
+  background-color: rgba(168, 85, 247, 0.12);
+  color: #A855F7;
+  border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.qty-cell {
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+/* Botão Visualizar */
 .sales-view-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
   border: 1px solid var(--border-color);
-  background: var(--bg-card);
+  background-color: var(--bg-card);
   color: var(--text-dark);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .sales-view-btn:hover {
   border-color: var(--primary);
+  background-color: rgba(59, 130, 246, 0.08);
   color: var(--primary);
 }
 
 /* ============================================================
-   Modal overlay / shared popover shell
+   Barra de Paginação
+   ============================================================ */
+.sales-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 12px;
+  background-color: var(--bg-card);
+}
+
+.sales-pagination-info {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sales-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sales-pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  color: var(--text-dark);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sales-pagination-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.sales-pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sales-pagination-page-indicator {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+  padding: 0 8px;
+}
+
+/* ============================================================
+   Modais (Detalhes da Venda & Seletor de Período Personalizado)
    ============================================================ */
 .modal-overlay {
   position: fixed;
@@ -169,7 +470,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(15, 23, 42, 0.55);
+  background-color: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(6px);
   z-index: 9999;
   display: flex;
@@ -179,259 +480,80 @@
   animation: salesFadeIn 0.2s ease-out;
 }
 
-@keyframes salesFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.sales-modal-shell {
+  background-color: var(--bg-card);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: salesSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes salesSlideUp {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-.modal-close-btn {
+.sales-modal-header {
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sales-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.sales-modal-close-btn {
   background: transparent;
   color: var(--text-muted);
   padding: 6px;
   border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.modal-close-btn:hover {
-  background: var(--bg-main);
+.sales-modal-close-btn:hover {
+  background-color: var(--bg-main);
   color: var(--text-dark);
 }
 
-.modal-footer {
+.sales-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sales-modal-footer {
   padding: 16px 24px;
   border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: var(--bg-main);
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
-.btn-secondary {
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-  font-weight: 500;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  color: var(--text-dark);
-  transition: all 0.2s ease;
+[data-theme="dark"] .sales-modal-footer {
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
-.btn-secondary:hover {
-  background: var(--bg-main);
-}
-
-.sales-popover .btn-primary:disabled,
-.sales-detail-modal .btn-primary:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* ============================================================
-   Breakdown / Date popover
-   ============================================================ */
-.sales-popover {
-  background-color: var(--bg-card);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 440px;
-  max-height: 88vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  animation: salesSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-}
-
-.sales-popover-header {
-  padding: 20px 22px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.sales-popover-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-dark);
-}
-
-.sales-popover-body {
-  padding: 20px 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  overflow-y: auto;
-}
-
-.sales-popover-empty {
-  padding: 32px 22px;
-  text-align: center;
-  font-size: 14px;
-}
-
-.sales-popover-totals {
-  display: flex;
-  gap: 24px;
-}
-
-.sales-popover-totals > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sales-popover-total-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text-dark);
-}
-
-.sales-popover-section-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-dark);
-  margin-bottom: 10px;
-}
-
-.sales-popover-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 160px;
-  overflow-y: auto;
-}
-
-.sales-popover-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-main);
-  font-size: 13px;
-}
-
-.sales-popover-rank {
-  font-weight: 700;
-  color: var(--primary);
-  min-width: 20px;
-}
-
-.sales-popover-row-name {
-  flex: 1;
-  color: var(--text-dark);
-  font-weight: 500;
-}
-
-.sales-popover-row-value {
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-/* ============================================================
-   Calendar
-   ============================================================ */
-.sales-calendar {
-  padding: 18px 22px 8px;
-}
-
-.sales-calendar-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.sales-calendar-month {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-dark);
-}
-
-.sales-calendar-arrow {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  border: 1px solid var(--border-color);
-}
-
-.sales-calendar-arrow:hover {
-  background: var(--bg-main);
-  color: var(--text-dark);
-}
-
-.sales-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  margin-bottom: 4px;
-}
-
-.sales-calendar-weekdays span {
-  text-align: center;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  padding-bottom: 6px;
-}
-
-.sales-calendar-day {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  color: var(--text-dark);
-}
-
-.sales-calendar-day:hover {
-  background: var(--bg-main);
-}
-
-.sales-calendar-day.today {
-  font-weight: 700;
-  color: var(--primary);
-}
-
-.sales-calendar-day.selected {
-  background: var(--primary);
-  color: #fff;
-  font-weight: 600;
-}
-
-/* ============================================================
-   Sale detail modal
-   ============================================================ */
-.sales-detail-modal {
-  background-color: var(--bg-card);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  animation: salesSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-}
-
+/* Detalhes da Venda */
 .sales-detail-grid {
-  padding: 20px 22px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
@@ -441,23 +563,116 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  background-color: rgba(0, 0, 0, 0.02);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
 }
 
-.sales-detail-value {
-  font-size: 14px;
+[data-theme="dark"] .sales-detail-item {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.sales-detail-item.full-width {
+  grid-column: span 2;
+}
+
+.sales-detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.sales-detail-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+/* Formulário de Período Customizado */
+.custom-date-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.custom-date-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.custom-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-date-field label {
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-dark);
 }
 
-/* ============================================================
-   Dark mode
-   ============================================================ */
-[data-theme="dark"] .sales-filters-row select,
-[data-theme="dark"] .sales-popover-row {
-  background-color: rgba(15, 23, 42, 0.6);
-  border-color: var(--border-color);
+.custom-date-field input {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  color: var(--text-dark);
+  font-size: 14px;
+  outline: none;
 }
 
-[data-theme="dark"] .sales-view-btn {
-  background: rgba(255, 255, 255, 0.03);
+.custom-date-field input:focus {
+  border-color: var(--primary);
+}
+
+/* ============================================================
+   Responsividade
+   ============================================================ */
+@media (max-width: 1024px) {
+  .sales-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-filters-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .sales-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sales-date-filter-container {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sales-filters-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-detail-grid,
+  .custom-date-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-detail-item.full-width {
+    grid-column: span 1;
+  }
+
+  .sales-pagination-bar {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .sales-pagination-controls {
+    justify-content: center;
+  }
 }

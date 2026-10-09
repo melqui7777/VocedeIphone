@@ -5,6 +5,7 @@ import { Chart as ChartJS, ArcElement, Tooltip as ChartTooltip, Legend } from 'c
 import { TrendingUp, Target, CircleDollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import './Dashboard.css';
 import { useTheme } from '../context/ThemeContext';
+import { SoldProductsModal } from '../components/SoldProductsModal';
 import {
   fetchGoals,
   fetchSalesInRange,
@@ -12,11 +13,14 @@ import {
   fetchVisibleSellers,
   fetchAllConversations,
   computeSellerPerformance,
+  classifyProductCategory,
   getWeekRange,
   getMonthRange,
   getDayRange,
   type SellerPerformance,
+  type ConversationSummary,
 } from '../lib/api';
+import type { Sale, Seller, Product } from '../lib/database.types';
 
 ChartJS.register(ArcElement, ChartTooltip, Legend);
 
@@ -40,7 +44,9 @@ interface DashboardData {
   topProducts: { name: string; qty: number }[];
   totalUnitsSold: number;
   topSellers: SellerPerformance[];
-  topConversion: SellerPerformance[];
+  sellers: Seller[];
+  monthSales: Sale[];
+  products: Product[];
 }
 
 export function Dashboard() {
@@ -49,6 +55,8 @@ export function Dashboard() {
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
+  const [isSoldModalOpen, setIsSoldModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [weekOffset, setWeekOffset] = useState<number>(0);
   const [dayChartData, setDayChartData] = useState<{ name: string; value: number }[]>([]);
@@ -64,22 +72,29 @@ export function Dashboard() {
       fetchSalesInRange(monthStart, monthEnd),
       fetchProducts(),
       fetchVisibleSellers(),
-      fetchAllConversations(),
-    ]).then(([goals, weekSales, monthSales, products, sellers, conversations]) => {
-      const weeklySold = weekSales.reduce((sum, s) => sum + s.quantity, 0);
-      const monthlySold = monthSales.reduce((sum, s) => sum + s.quantity, 0);
-
+    ]).then(([goals, weekSales, monthSales, products, sellers]) => {
       const productMap = new Map(products.map((p) => [p.id, p]));
+      const isCountableSale = (s: Sale) => {
+        const prod = productMap.get(s.product_id);
+        const category = classifyProductCategory(prod?.name);
+        if (category === 'Acessórios') {
+          return (Number(s.amount) || 0) > 0;
+        }
+        return true;
+      };
+
+      const weeklySold = weekSales.filter(isCountableSale).reduce((sum, s) => sum + s.quantity, 0);
+      const monthlySold = monthSales.filter(isCountableSale).reduce((sum, s) => sum + s.quantity, 0);
+
       const qtyByProduct = new Map<string, number>();
-      monthSales.forEach((s) => qtyByProduct.set(s.product_id, (qtyByProduct.get(s.product_id) ?? 0) + s.quantity));
+      monthSales.filter(isCountableSale).forEach((s) => qtyByProduct.set(s.product_id, (qtyByProduct.get(s.product_id) ?? 0) + s.quantity));
       const topProducts = [...qtyByProduct.entries()]
         .map(([id, qty]) => ({ name: productMap.get(id)?.name ?? 'Produto removido', qty }))
         .sort((a, b) => b.qty - a.qty)
         .slice(0, 3);
 
-      const performance = computeSellerPerformance(sellers, monthSales, conversations, products);
+      const performance = computeSellerPerformance(sellers, monthSales, [], products);
       const topSellers = [...performance].sort((a, b) => b.sold - a.sold).slice(0, 3);
-      const topConversion = [...performance].sort((a, b) => b.conversion - a.conversion).slice(0, 3);
 
       setData({
         weeklySold,
@@ -89,10 +104,29 @@ export function Dashboard() {
         topProducts,
         totalUnitsSold: monthlySold,
         topSellers,
-        topConversion,
+        sellers,
+        monthSales,
+        products,
       });
+    }).catch((err) => {
+      console.error('Erro ao carregar dados do Dashboard:', err);
     }).finally(() => setLoading(false));
+
+    // As conversas só alimentam o Ranking de Conversão — não seguram o resto da tela.
+    fetchAllConversations()
+      .then(setConversations)
+      .catch((err) => {
+        console.error('Erro ao carregar conversas do Dashboard:', err);
+        setConversations([]);
+      });
   }, []);
+
+  const topConversion = useMemo(() => {
+    if (!data || !conversations) return [];
+    return computeSellerPerformance(data.sellers, data.monthSales, conversations, data.products)
+      .sort((a, b) => b.conversion - a.conversion)
+      .slice(0, 3);
+  }, [data, conversations]);
 
   useEffect(() => {
     const { start, end } = getDayRange(selectedDate);
@@ -200,14 +234,24 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="stat-card">
+        <div
+          className="stat-card clickable"
+          onClick={() => setIsSoldModalOpen(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setIsSoldModalOpen(true)}
+          style={{ cursor: 'pointer' }}
+          title="Clique para ver todos os produtos vendidos"
+        >
           <div className="stat-icon-wrapper">
             <span className="stat-icon"><CircleDollarSign size={24} /></span>
           </div>
           <div className="stat-info">
             <span className="stat-label">Total de Vendas no Mês</span>
             <span className="stat-value">{(data?.monthlySold ?? 0).toLocaleString('pt-BR')}</span>
-            <span className="stat-trend">Produtos vendidos</span>
+            <span className="stat-trend" style={{ color: 'var(--primary)', fontWeight: 600 }}>
+              Ver produtos vendidos →
+            </span>
           </div>
         </div>
       </div>
@@ -327,9 +371,9 @@ export function Dashboard() {
 
           <div className="card progress-card">
             <h2 className="h2">Ranking de Conversão</h2>
-            {data && data.topConversion.length > 0 ? (
+            {topConversion.length > 0 ? (
               <div className="progress-list">
-                {data.topConversion.map(({ seller, conversion }, i) => (
+                {topConversion.map(({ seller, conversion }, i) => (
                   <div className="progress-item" key={seller.id}>
                     <div className="progress-header">
                       <span className="progress-name">{seller.name}</span>
@@ -342,13 +386,22 @@ export function Dashboard() {
                 ))}
               </div>
             ) : (
-              <p className="text-muted" style={{ padding: '16px 0', textAlign: 'center' }}>Sem dados de conversas ainda.</p>
+              <p className="text-muted" style={{ padding: '16px 0', textAlign: 'center' }}>
+                {conversations === null ? 'Carregando conversas...' : 'Sem dados de conversas ainda.'}
+              </p>
             )}
           </div>
 
         </div>
 
       </div>
+
+      <SoldProductsModal
+        isOpen={isSoldModalOpen}
+        onClose={() => setIsSoldModalOpen(false)}
+        initialCategory="all"
+        initialPeriod="month"
+      />
     </div>
   );
 }

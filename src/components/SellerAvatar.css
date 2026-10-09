@@ -1,0 +1,130 @@
+/* SellerAvatar Styles */
+.seller-avatar-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.seller-avatar-container.is-editable {
+  cursor: pointer;
+}
+
+.seller-avatar-ring {
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border-color);
+  background-color: var(--bg-card);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.seller-avatar-container.is-editable:hover .seller-avatar-ring {
+  transform: scale(1.05);
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+}
+
+/* Tamanhos */
+.seller-avatar-container.size-xs .seller-avatar-ring {
+  width: 28px;
+  height: 28px;
+}
+.seller-avatar-container.size-xs .seller-avatar-initials {
+  font-size: 11px;
+}
+
+.seller-avatar-container.size-sm .seller-avatar-ring {
+  width: 38px;
+  height: 38px;
+}
+.seller-avatar-container.size-sm .seller-avatar-initials {
+  font-size: 13px;
+}
+
+.seller-avatar-container.size-md .seller-avatar-ring {
+  width: 50px;
+  height: 50px;
+}
+.seller-avatar-container.size-md .seller-avatar-initials {
+  font-size: 16px;
+}
+
+.seller-avatar-container.size-lg .seller-avatar-ring {
+  width: 68px;
+  height: 68px;
+}
+.seller-avatar-container.size-lg .seller-avatar-initials {
+  font-size: 22px;
+}
+
+.seller-avatar-container.size-xl .seller-avatar-ring {
+  width: 88px;
+  height: 88px;
+}
+.seller-avatar-container.size-xl .seller-avatar-initials {
+  font-size: 28px;
+}
+
+/* Imagem e Iniciais */
+.seller-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.seller-avatar-initials {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Bordas Especiais por Posição no Ranking */
+/* 1º Lugar - Ouro com Glow */
+.seller-avatar-container.avatar-rank-1 .seller-avatar-ring {
+  border: 3px solid #F59E0B;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* 2º Lugar - Prata / Azul */
+.seller-avatar-container.avatar-rank-2 .seller-avatar-ring {
+  border: 3px solid #94A3B8;
+  box-shadow: 0 0 12px rgba(148, 163, 184, 0.35), 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* 3º Lugar - Bronze / Laranja */
+.seller-avatar-container.avatar-rank-3 .seller-avatar-ring {
+  border: 3px solid #D97706;
+  box-shadow: 0 0 12px rgba(217, 119, 6, 0.35), 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Overlay de Edição ao passar o mouse */
+.seller-avatar-edit-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
+}
+
+.seller-avatar-container.is-editable:hover .seller-avatar-edit-overlay {
+  opacity: 1;
+}

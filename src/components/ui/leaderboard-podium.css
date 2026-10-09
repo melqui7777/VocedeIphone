@@ -1,0 +1,170 @@
+/* Leaderboard Podium CSS */
+.leaderboard-podium-root {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  padding-top: 16px;
+}
+
+.podium-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* Avatar container */
+.podium-avatar-container {
+  position: relative;
+  margin-bottom: 8px;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.podium-avatar-img {
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  transition: transform 0.2s ease;
+}
+
+.podium-avatar-img:hover {
+  transform: scale(1.05);
+}
+
+.podium-avatar-fallback {
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.avatar-sm { width: 42px; height: 42px; }
+.avatar-default { width: 56px; height: 56px; }
+.avatar-lg { width: 72px; height: 72px; }
+
+/* Crown Badge */
+.podium-crown-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  background-color: #0d111c;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.crown-badge-sm { width: 18px; height: 18px; }
+.crown-badge-default { width: 22px; height: 22px; }
+.crown-badge-lg { width: 28px; height: 28px; }
+
+/* Names & Values */
+.podium-user-name {
+  font-weight: 600;
+  color: var(--text-dark);
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.name-sm { font-size: 11px; }
+.name-default { font-size: 13px; }
+.name-lg { font-size: 15px; }
+
+.podium-user-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 6px;
+}
+
+/* Podium Blocks */
+.podium-block {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 8px 16px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.podium-modern-radius {
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+.podium-w-sm { width: 72px; }
+.podium-w-default { width: 90px; }
+.podium-w-lg { width: 110px; }
+
+/* Podium Heights */
+.podium-rank-1-default { height: 128px; }
+.podium-rank-1-sm { height: 96px; }
+.podium-rank-1-lg { height: 160px; }
+
+.podium-rank-2-default { height: 96px; }
+.podium-rank-2-sm { height: 76px; }
+.podium-rank-2-lg { height: 120px; }
+
+.podium-rank-3-default { height: 72px; }
+.podium-rank-3-sm { height: 56px; }
+.podium-rank-3-lg { height: 96px; }
+
+.podium-number {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Colors matching the reference image */
+/* Rank 1: Gold / Amber */
+.text-rank-1 {
+  color: #F59E0B !important;
+}
+.bg-rank-1 {
+  background: linear-gradient(180deg, #B45309 0%, #78350F 100%) !important;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Rank 2: Silver / Dark Slate */
+.text-rank-2 {
+  color: #94A3B8 !important;
+}
+.bg-rank-2 {
+  background: linear-gradient(180deg, #334155 0%, #1E293B 100%) !important;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* Rank 3: Bronze */
+.text-rank-3 {
+  color: #D97706 !important;
+}
+.bg-rank-3 {
+  background: linear-gradient(180deg, #7C2D12 0%, #451A03 100%) !important;
+  border: 1px solid rgba(217, 119, 6, 0.25);
+}
+
+/* Light mode adjustments */
+[data-theme="light"] .bg-rank-1 {
+  background: linear-gradient(180deg, #D97706 0%, #B45309 100%) !important;
+}
+[data-theme="light"] .bg-rank-2 {
+  background: linear-gradient(180deg, #475569 0%, #334155 100%) !important;
+}
+[data-theme="light"] .bg-rank-3 {
+  background: linear-gradient(180deg, #9A3412 0%, #7C2D12 100%) !important;
+}
+[data-theme="light"] .podium-crown-badge {
+  background-color: #ffffff;
+}

@@ -1,89 +1,41 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays,
-  CalendarClock,
-  CalendarRange,
+  Calendar,
   Search,
   ChevronLeft,
   ChevronRight,
   Eye,
   X,
-  Trophy,
-  Package,
+  Smartphone,
+  Headphones,
+  ShoppingBag,
+  SlidersHorizontal,
 } from 'lucide-react';
 import './Sales.css';
 import {
   fetchProducts,
   fetchSellers,
   fetchSalesInRange,
-  getWeekRange,
+  classifyProductCategory,
+  isDeviceProduct,
+  isCountableAccessorySale,
   getMonthRange,
+  getWeekRange,
   getDayRange,
 } from '../lib/api';
 import type { Sale, Product, Seller } from '../lib/database.types';
 
-const WEEKDAY_SHORT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-const MONTH_NAMES_FULL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-const MONTH_NAMES_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+export type DatePreset = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_month' | 'custom';
 
-type PeriodFilter = 'today' | 'week' | 'month' | 'custom';
-
-interface SaleRow extends Sale {
+export interface SaleRow extends Sale {
   productName: string;
-  productCategory: 'Aparelhos' | 'Acessórios' | null;
+  productCategory: 'Aparelhos' | 'Acessórios';
   sellerName: string;
 }
 
-interface BreakdownData {
-  totalSales: number;
-  totalUnits: number;
-  sellerRanking: { id: string; name: string; count: number }[];
-  productList: { id: string; name: string; qty: number }[];
-}
-
-/** Junta vendas (já vindas de uma consulta com período limitado) com os mapas de produto/vendedor. */
-function joinSales(sales: Sale[], productMap: Map<string, Product>, sellerMap: Map<string, Seller>): SaleRow[] {
-  return sales
-    .map((sale) => {
-      const product = productMap.get(sale.product_id);
-      const seller = sellerMap.get(sale.seller_id);
-      return {
-        ...sale,
-        productName: product?.name ?? 'Produto removido',
-        productCategory: product?.category ?? null,
-        sellerName: seller?.name ?? 'Vendedor removido',
-      };
-    })
-    .sort((a, b) => new Date(b.sold_at).getTime() - new Date(a.sold_at).getTime());
-}
-
-function computeBreakdown(rows: SaleRow[]): BreakdownData {
-  const bySeller = new Map<string, { id: string; name: string; count: number }>();
-  const byProduct = new Map<string, { id: string; name: string; qty: number }>();
-  let totalUnits = 0;
-
-  for (const row of rows) {
-    totalUnits += row.quantity;
-
-    const seller = bySeller.get(row.seller_id) ?? { id: row.seller_id, name: row.sellerName, count: 0 };
-    seller.count += 1;
-    bySeller.set(row.seller_id, seller);
-
-    const product = byProduct.get(row.product_id) ?? { id: row.product_id, name: row.productName, qty: 0 };
-    product.qty += row.quantity;
-    byProduct.set(row.product_id, product);
-  }
-
-  return {
-    totalSales: rows.length,
-    totalUnits,
-    sellerRanking: [...bySeller.values()].sort((a, b) => b.count - a.count),
-    productList: [...byProduct.values()].sort((a, b) => b.qty - a.qty),
-  };
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR');
+function formatDate(isoOrDate: string | Date): string {
+  const d = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate;
+  return d.toLocaleDateString('pt-BR');
 }
 
 function formatDateTime(iso: string): string {
@@ -94,377 +46,137 @@ function formatCurrency(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+function toISODateInput(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
-function addMonths(date: Date, delta: number): Date {
-  return new Date(date.getFullYear(), date.getMonth() + delta, 1);
+function parseISODateInput(val: string): Date {
+  const [y, m, d] = val.split('-').map(Number);
+  return new Date(y, m - 1, d);
 }
 
-// ============================================================
-// Stat card (clicável, abre popover de resumo)
-// ============================================================
-interface StatCardProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  trend: string;
-  active: boolean;
-  onClick: () => void;
-}
+/** Retorna o intervalo { start, end, label } para o preset escolhido */
+export function calculateDateRange(preset: DatePreset, customStart: Date, customEnd: Date): { start: Date; end: Date; label: string } {
+  const now = new Date();
 
-function StatCard({ icon, label, value, trend, active, onClick }: StatCardProps) {
-  return (
-    <div
-      className={`stat-card sales-stat-card ${active ? 'active' : ''}`}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
-    >
-      <div className="stat-icon-wrapper">
-        <span className="stat-icon">{icon}</span>
-      </div>
-      <div className="stat-info">
-        <span className="stat-label">{label}</span>
-        <span className="stat-value">{value}</span>
-        <span className="stat-trend">{trend}</span>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// Card "Vendas do Mês" — navegável por mês/ano, sem carregar o histórico inteiro
-// ============================================================
-interface MonthStatCardProps {
-  viewDate: Date;
-  value: string;
-  trend: string;
-  active: boolean;
-  onOpenBreakdown: () => void;
-  onOpenPicker: () => void;
-  onNavigate: (delta: number) => void;
-}
-
-function MonthStatCard({ viewDate, value, trend, active, onOpenBreakdown, onOpenPicker, onNavigate }: MonthStatCardProps) {
-  return (
-    <div className={`stat-card sales-stat-card sales-month-card ${active ? 'active' : ''}`}>
-      <div className="stat-icon-wrapper">
-        <span className="stat-icon"><CalendarDays size={22} /></span>
-      </div>
-      <div className="stat-info" style={{ flex: 1 }}>
-        <div className="sales-month-nav">
-          <button className="sales-month-arrow" onClick={() => onNavigate(-1)} aria-label="Mês anterior">
-            <ChevronLeft size={14} />
-          </button>
-          <button className="sales-month-label" onClick={onOpenPicker} title="Escolher mês e ano">
-            {MONTH_NAMES_SHORT[viewDate.getMonth()]}/{viewDate.getFullYear()}
-          </button>
-          <button className="sales-month-arrow" onClick={() => onNavigate(1)} aria-label="Próximo mês">
-            <ChevronRight size={14} />
-          </button>
-        </div>
-        <button className="sales-stat-value-btn" onClick={onOpenBreakdown}>
-          <span className="stat-value">{value}</span>
-          <span className="stat-trend">{trend}</span>
-        </button>
-      </div>
-    </div>
-  );
+  switch (preset) {
+    case 'today': {
+      const { start, end } = getDayRange(now);
+      return { start, end, label: `Hoje (${formatDate(start)})` };
+    }
+    case 'yesterday': {
+      const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      const { start, end } = getDayRange(yesterday);
+      return { start, end, label: `Ontem (${formatDate(start)})` };
+    }
+    case 'this_week': {
+      const { start, end } = getWeekRange(now);
+      const displayEnd = new Date(end.getTime() - 86400000);
+      return { start, end, label: `Esta semana (${formatDate(start)} a ${formatDate(displayEnd)})` };
+    }
+    case 'this_month': {
+      const { start, end } = getMonthRange(now);
+      const monthName = start.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      return { start, end, label: `Este mês (${monthName})` };
+    }
+    case 'last_month': {
+      const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const { start, end } = getMonthRange(lastMonthDate);
+      const monthName = start.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      return { start, end, label: `Mês anterior (${monthName})` };
+    }
+    case 'custom': {
+      const start = new Date(customStart.getFullYear(), customStart.getMonth(), customStart.getDate(), 0, 0, 0, 0);
+      const end = new Date(customEnd.getFullYear(), customEnd.getMonth(), customEnd.getDate() + 1, 0, 0, 0, 0);
+      return {
+        start,
+        end,
+        label: `${formatDate(customStart)} a ${formatDate(customEnd)}`,
+      };
+    }
+  }
 }
 
 // ============================================================
-// Popover de resumo (Hoje / Semana / Mês / Data)
+// Modal de Período Personalizado
 // ============================================================
-interface BreakdownPopoverProps {
-  title: string;
-  subtitle: string;
-  breakdown: BreakdownData;
-  loading?: boolean;
+interface CustomRangeModalProps {
+  initialStart: Date;
+  initialEnd: Date;
+  onApply: (start: Date, end: Date) => void;
   onClose: () => void;
-  onViewAll: () => void;
-  emptyLabel: string;
 }
 
-function BreakdownPopover({ title, subtitle, breakdown, loading, onClose, onViewAll, emptyLabel }: BreakdownPopoverProps) {
+function CustomRangeModal({ initialStart, initialEnd, onApply, onClose }: CustomRangeModalProps) {
+  const [startDateStr, setStartDateStr] = useState(() => toISODateInput(initialStart));
+  const [endDateStr, setEndDateStr] = useState(() => toISODateInput(initialEnd));
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    const start = parseISODateInput(startDateStr);
+    const end = parseISODateInput(endDateStr);
+    if (start > end) {
+      alert('A data inicial não pode ser posterior à data final.');
+      return;
+    }
+    onApply(start, end);
+    onClose();
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="sales-popover" onClick={(e) => e.stopPropagation()}>
-        <div className="sales-popover-header">
-          <div>
-            <h3 className="sales-popover-title">{title}</h3>
-            <p className="text-muted text-sm">{subtitle}</p>
-          </div>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Fechar">
+      <div className="sales-modal-shell" onClick={(e) => e.stopPropagation()}>
+        <div className="sales-modal-header">
+          <h3 className="sales-modal-title">Selecionar Período Personalizado</h3>
+          <button className="sales-modal-close-btn" onClick={onClose} aria-label="Fechar">
             <X size={18} />
           </button>
         </div>
 
-        {loading ? (
-          <div className="sales-popover-empty text-muted">Carregando...</div>
-        ) : breakdown.totalSales === 0 ? (
-          <div className="sales-popover-empty text-muted">{emptyLabel}</div>
-        ) : (
-          <div className="sales-popover-body">
-            <div className="sales-popover-totals">
-              <div>
-                <span className="sales-popover-total-value">{breakdown.totalSales}</span>
-                <span className="text-muted text-sm">vendas</span>
+        <form onSubmit={handleSave}>
+          <div className="sales-modal-body">
+            <div className="custom-date-inputs">
+              <div className="custom-date-field">
+                <label>Data Inicial</label>
+                <input
+                  type="date"
+                  value={startDateStr}
+                  onChange={(e) => setStartDateStr(e.target.value)}
+                  required
+                />
               </div>
-              <div>
-                <span className="sales-popover-total-value">{breakdown.totalUnits}</span>
-                <span className="text-muted text-sm">produtos vendidos</span>
-              </div>
-            </div>
 
-            <div className="sales-popover-section">
-              <h4 className="sales-popover-section-title">
-                <Trophy size={14} color="var(--primary)" /> Ranking de vendedores
-              </h4>
-              <div className="sales-popover-list">
-                {breakdown.sellerRanking.map((s, idx) => (
-                  <div className="sales-popover-row" key={s.id}>
-                    <span className="sales-popover-rank">{idx + 1}º</span>
-                    <span className="sales-popover-row-name">{s.name}</span>
-                    <span className="sales-popover-row-value">{s.count} vendas</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="sales-popover-section">
-              <h4 className="sales-popover-section-title">
-                <Package size={14} color="var(--primary)" /> Produtos vendidos
-              </h4>
-              <div className="sales-popover-list">
-                {breakdown.productList.map((p) => (
-                  <div className="sales-popover-row" key={p.id}>
-                    <span className="sales-popover-row-name">{p.name}</span>
-                    <span className="sales-popover-row-value">{p.qty} un.</span>
-                  </div>
-                ))}
+              <div className="custom-date-field">
+                <label>Data Final</label>
+                <input
+                  type="date"
+                  value={endDateStr}
+                  onChange={(e) => setEndDateStr(e.target.value)}
+                  required
+                />
               </div>
             </div>
           </div>
-        )}
 
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Fechar</button>
-          <button className="btn-primary" onClick={onViewAll} disabled={loading || breakdown.totalSales === 0}>
-            Ver detalhes completos
-          </button>
-        </div>
+          <div className="sales-modal-footer">
+            <button type="button" className="btn-secondary" onClick={onClose}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn-primary">
+              Aplicar Período
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
 
 // ============================================================
-// "Vendas por data" popover — calendário (dia) + resumo
-// ============================================================
-interface DatePopoverProps {
-  selectedDate: Date | null;
-  onSelectDate: (date: Date) => void;
-  breakdown: BreakdownData | null;
-  loading: boolean;
-  onClose: () => void;
-  onViewAll: () => void;
-}
-
-function DatePopover({ selectedDate, onSelectDate, breakdown, loading, onClose, onViewAll }: DatePopoverProps) {
-  const [viewMonth, setViewMonth] = useState(() => selectedDate ?? new Date());
-
-  const firstOfMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
-  const startWeekday = firstOfMonth.getDay();
-  const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
-  const today = new Date();
-
-  const cells: (Date | null)[] = [
-    ...Array.from({ length: startWeekday }, () => null),
-    ...Array.from({ length: daysInMonth }, (_, i) => new Date(viewMonth.getFullYear(), viewMonth.getMonth(), i + 1)),
-  ];
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="sales-popover" onClick={(e) => e.stopPropagation()}>
-        <div className="sales-popover-header">
-          <div>
-            <h3 className="sales-popover-title">Vendas por Data</h3>
-            <p className="text-muted text-sm">Selecione uma data para ver o resumo</p>
-          </div>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Fechar">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="sales-calendar">
-          <div className="sales-calendar-nav">
-            <button
-              className="sales-calendar-arrow"
-              onClick={() => setViewMonth(addMonths(viewMonth, -1))}
-              aria-label="Mês anterior"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <span className="sales-calendar-month">{MONTH_NAMES_FULL[viewMonth.getMonth()]} {viewMonth.getFullYear()}</span>
-            <button
-              className="sales-calendar-arrow"
-              onClick={() => setViewMonth(addMonths(viewMonth, 1))}
-              aria-label="Próximo mês"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-
-          <div className="sales-calendar-grid sales-calendar-weekdays">
-            {WEEKDAY_SHORT.map((d, i) => (
-              <span key={i}>{d}</span>
-            ))}
-          </div>
-
-          <div className="sales-calendar-grid">
-            {cells.map((date, i) => {
-              if (!date) return <span key={i} />;
-              const isToday = isSameDay(date, today);
-              const isSelected = selectedDate && isSameDay(date, selectedDate);
-              return (
-                <button
-                  key={i}
-                  className={`sales-calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}`}
-                  onClick={() => onSelectDate(date)}
-                >
-                  {date.getDate()}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {selectedDate && (
-          loading ? (
-            <div className="sales-popover-empty text-muted">Carregando...</div>
-          ) : breakdown && breakdown.totalSales === 0 ? (
-            <div className="sales-popover-empty text-muted">Nenhuma venda registrada em {formatDate(selectedDate.toISOString())}.</div>
-          ) : breakdown ? (
-            <div className="sales-popover-body">
-              <div className="sales-popover-totals">
-                <div>
-                  <span className="sales-popover-total-value">{breakdown.totalSales}</span>
-                  <span className="text-muted text-sm">vendas em {formatDate(selectedDate.toISOString())}</span>
-                </div>
-                <div>
-                  <span className="sales-popover-total-value">{breakdown.totalUnits}</span>
-                  <span className="text-muted text-sm">produtos vendidos</span>
-                </div>
-              </div>
-
-              <div className="sales-popover-section">
-                <h4 className="sales-popover-section-title">
-                  <Trophy size={14} color="var(--primary)" /> Ranking de vendedores
-                </h4>
-                <div className="sales-popover-list">
-                  {breakdown.sellerRanking.map((s, idx) => (
-                    <div className="sales-popover-row" key={s.id}>
-                      <span className="sales-popover-rank">{idx + 1}º</span>
-                      <span className="sales-popover-row-name">{s.name}</span>
-                      <span className="sales-popover-row-value">{s.count} vendas</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="sales-popover-section">
-                <h4 className="sales-popover-section-title">
-                  <Package size={14} color="var(--primary)" /> Produtos vendidos
-                </h4>
-                <div className="sales-popover-list">
-                  {breakdown.productList.map((p) => (
-                    <div className="sales-popover-row" key={p.id}>
-                      <span className="sales-popover-row-name">{p.name}</span>
-                      <span className="sales-popover-row-value">{p.qty} un.</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null
-        )}
-
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Fechar</button>
-          <button className="btn-primary" onClick={onViewAll} disabled={loading || !selectedDate || !breakdown || breakdown.totalSales === 0}>
-            Ver detalhes completos
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// Popover "calendário de meses e anos" — navegar/pesquisar por período
-// ============================================================
-interface MonthYearPopoverProps {
-  viewDate: Date;
-  onSelect: (date: Date) => void;
-  onClose: () => void;
-}
-
-function MonthYearPopover({ viewDate, onSelect, onClose }: MonthYearPopoverProps) {
-  const [viewYear, setViewYear] = useState(viewDate.getFullYear());
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="sales-popover" onClick={(e) => e.stopPropagation()}>
-        <div className="sales-popover-header">
-          <div>
-            <h3 className="sales-popover-title">Selecionar Período</h3>
-            <p className="text-muted text-sm">Escolha o mês e o ano para consultar</p>
-          </div>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Fechar">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="sales-calendar">
-          <div className="sales-calendar-nav">
-            <button className="sales-calendar-arrow" onClick={() => setViewYear((y) => y - 1)} aria-label="Ano anterior">
-              <ChevronLeft size={16} />
-            </button>
-            <span className="sales-calendar-month">{viewYear}</span>
-            <button className="sales-calendar-arrow" onClick={() => setViewYear((y) => y + 1)} aria-label="Próximo ano">
-              <ChevronRight size={16} />
-            </button>
-          </div>
-
-          <div className="sales-month-grid">
-            {MONTH_NAMES_SHORT.map((name, idx) => {
-              const isSelected = viewYear === viewDate.getFullYear() && idx === viewDate.getMonth();
-              return (
-                <button
-                  key={name}
-                  className={`sales-month-grid-item ${isSelected ? 'selected' : ''}`}
-                  onClick={() => { onSelect(new Date(viewYear, idx, 1)); onClose(); }}
-                >
-                  {name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Fechar</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// Modal de detalhe de uma venda
+// Modal de Detalhes da Venda
 // ============================================================
 function SaleDetailModal({ sale, onClose }: { sale: SaleRow | null; onClose: () => void }) {
   if (!sale) return null;
@@ -472,46 +184,68 @@ function SaleDetailModal({ sale, onClose }: { sale: SaleRow | null; onClose: () 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="sales-detail-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="sales-popover-header">
+      <div className="sales-modal-shell" onClick={(e) => e.stopPropagation()}>
+        <div className="sales-modal-header">
           <div>
-            <h3 className="sales-popover-title">Detalhes da Venda</h3>
-            <p className="text-muted text-sm">{formatDateTime(sale.sold_at)}</p>
+            <h3 className="sales-modal-title">Detalhes da Venda</h3>
+            <p className="text-muted text-sm" style={{ marginTop: '2px' }}>
+              Realizada em {formatDateTime(sale.sold_at)}
+            </p>
           </div>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Fechar">
+          <button className="sales-modal-close-btn" onClick={onClose} aria-label="Fechar">
             <X size={18} />
           </button>
         </div>
 
-        <div className="sales-detail-grid">
-          <div className="sales-detail-item">
-            <span className="text-muted text-sm">Produto</span>
-            <span className="sales-detail-value">{sale.productName}</span>
-          </div>
-          <div className="sales-detail-item">
-            <span className="text-muted text-sm">Categoria</span>
-            <span className="sales-detail-value">{sale.productCategory ?? '-'}</span>
-          </div>
-          <div className="sales-detail-item">
-            <span className="text-muted text-sm">Vendedor</span>
-            <span className="sales-detail-value">{sale.sellerName}</span>
-          </div>
-          <div className="sales-detail-item">
-            <span className="text-muted text-sm">Quantidade</span>
-            <span className="sales-detail-value">{sale.quantity} un.</span>
-          </div>
-          <div className="sales-detail-item">
-            <span className="text-muted text-sm">Preço unitário</span>
-            <span className="sales-detail-value">{formatCurrency(unitPrice)}</span>
-          </div>
-          <div className="sales-detail-item">
-            <span className="text-muted text-sm">Valor total</span>
-            <span className="sales-detail-value">{formatCurrency(sale.amount)}</span>
+        <div className="sales-modal-body">
+          <div className="sales-detail-grid">
+            <div className="sales-detail-item full-width">
+              <span className="sales-detail-label">Produto</span>
+              <span className="sales-detail-val">{sale.productName}</span>
+            </div>
+
+            <div className="sales-detail-item">
+              <span className="sales-detail-label">Categoria</span>
+              <span className="sales-detail-val">
+                <span className={`category-badge ${sale.productCategory === 'Aparelhos' ? 'aparelhos' : 'acessorios'}`}>
+                  {sale.productCategory}
+                </span>
+              </span>
+            </div>
+
+            <div className="sales-detail-item">
+              <span className="sales-detail-label">Vendedor</span>
+              <span className="sales-detail-val">{sale.sellerName}</span>
+            </div>
+
+            <div className="sales-detail-item">
+              <span className="sales-detail-label">Quantidade</span>
+              <span className="sales-detail-val">{sale.quantity} un.</span>
+            </div>
+
+            <div className="sales-detail-item">
+              <span className="sales-detail-label">Preço Unitário</span>
+              <span className="sales-detail-val">{formatCurrency(unitPrice)}</span>
+            </div>
+
+            <div className="sales-detail-item full-width">
+              <span className="sales-detail-label">Valor Total da Venda</span>
+              <span className="sales-detail-val" style={{ color: 'var(--primary)', fontSize: '18px' }}>
+                {formatCurrency(sale.amount)}
+                {sale.amount === 0 && sale.productCategory === 'Acessórios' && (
+                  <span className="text-muted text-sm" style={{ marginLeft: '8px', fontWeight: 400 }}>
+                    (Brinde / Cortesia)
+                  </span>
+                )}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Fechar</button>
+        <div className="sales-modal-footer">
+          <button className="btn-secondary" onClick={onClose}>
+            Fechar
+          </button>
         </div>
       </div>
     </div>
@@ -519,306 +253,485 @@ function SaleDetailModal({ sale, onClose }: { sale: SaleRow | null; onClose: () 
 }
 
 // ============================================================
-// Página Vendas
+// Página Principal de Vendas
 // ============================================================
 export function Sales() {
   const [products, setProducts] = useState<Product[]>([]);
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [loadingBase, setLoadingBase] = useState(true);
 
-  const [todaySales, setTodaySales] = useState<Sale[]>([]);
-  const [weekSales, setWeekSales] = useState<Sale[]>([]);
+  // Filtro de Período Principal no Topo Direito
+  const [datePreset, setDatePreset] = useState<DatePreset>('this_month');
+  const [customRange, setCustomRange] = useState<{ start: Date; end: Date }>(() => {
+    const now = new Date();
+    return {
+      start: new Date(now.getFullYear(), now.getMonth(), 1),
+      end: now,
+    };
+  });
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
 
-  const [viewDate, setViewDate] = useState(() => new Date());
-  const [monthSales, setMonthSales] = useState<Sale[]>([]);
-  const [loadingMonth, setLoadingMonth] = useState(true);
+  // Vendas carregadas para o período ativo
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [loadingSales, setLoadingSales] = useState(true);
 
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [customDateSales, setCustomDateSales] = useState<Sale[]>([]);
-  const [loadingCustomDate, setLoadingCustomDate] = useState(false);
-
-  const [openPopover, setOpenPopover] = useState<'today' | 'week' | 'month' | 'date' | null>(null);
-  const [monthPickerOpen, setMonthPickerOpen] = useState(false);
-  const [detailSale, setDetailSale] = useState<SaleRow | null>(null);
-
+  // Filtros Secundários da Tabela
   const [productFilter, setProductFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'Aparelhos' | 'Acessórios'>('all');
   const [sellerFilter, setSellerFilter] = useState('all');
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('month');
   const [search, setSearch] = useState('');
 
-  const tableRef = React.useRef<HTMLDivElement>(null);
+  // Modal de Detalhes da Venda
+  const [detailSale, setDetailSale] = useState<SaleRow | null>(null);
 
-  // Carga inicial: só o essencial (produtos/vendedores p/ filtros) + hoje/semana, que são períodos pequenos.
+  // Paginação da Tabela
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 15;
+
+  // 1. Carga inicial de Produtos e Vendedores
   useEffect(() => {
-    const now = new Date();
-    const today = getDayRange(now);
-    const week = getWeekRange(now);
-    Promise.all([
-      fetchProducts(),
-      fetchSellers(),
-      fetchSalesInRange(today.start, today.end),
-      fetchSalesInRange(week.start, week.end),
-    ])
-      .then(([p, sel, todayS, weekS]) => {
-        setProducts(p);
-        setSellers(sel);
-        setTodaySales(todayS);
-        setWeekSales(weekS);
+    Promise.all([fetchProducts(), fetchSellers()])
+      .then(([prods, sels]) => {
+        setProducts(prods);
+        setSellers(sels);
       })
       .finally(() => setLoadingBase(false));
   }, []);
 
-  // Busca apenas o mês selecionado — nunca o histórico inteiro.
-  useEffect(() => {
-    setLoadingMonth(true);
-    const { start, end } = getMonthRange(viewDate);
-    fetchSalesInRange(start, end)
-      .then(setMonthSales)
-      .finally(() => setLoadingMonth(false));
-  }, [viewDate]);
+  // 2. Intervalo de data atual calculado
+  const activeRange = useMemo(() => {
+    return calculateDateRange(datePreset, customRange.start, customRange.end);
+  }, [datePreset, customRange]);
 
-  // Busca sob demanda quando o dono escolhe uma data específica.
+  // 3. Busca de vendas sempre que o intervalo ativo mudar
   useEffect(() => {
-    if (!selectedDate) return;
-    setLoadingCustomDate(true);
-    const { start, end } = getDayRange(selectedDate);
-    fetchSalesInRange(start, end)
-      .then(setCustomDateSales)
-      .finally(() => setLoadingCustomDate(false));
-  }, [selectedDate]);
+    let isMounted = true;
+    setLoadingSales(true);
 
+    fetchSalesInRange(activeRange.start, activeRange.end)
+      .then((data) => {
+        if (isMounted) {
+          setSales(data);
+          setCurrentPage(1);
+        }
+      })
+      .catch((err) => console.error('Erro ao buscar vendas:', err))
+      .finally(() => {
+        if (isMounted) setLoadingSales(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeRange]);
+
+  // Mapeamentos
   const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const sellerMap = useMemo(() => new Map(sellers.map((s) => [s.id, s])), [sellers]);
 
-  const todayRows = useMemo(() => joinSales(todaySales, productMap, sellerMap), [todaySales, productMap, sellerMap]);
-  const weekRows = useMemo(() => joinSales(weekSales, productMap, sellerMap), [weekSales, productMap, sellerMap]);
-  const monthRows = useMemo(() => joinSales(monthSales, productMap, sellerMap), [monthSales, productMap, sellerMap]);
-  const selectedDateRows = useMemo(() => joinSales(customDateSales, productMap, sellerMap), [customDateSales, productMap, sellerMap]);
+  // Vendas mapeadas com categoria e nomes
+  const salesRows: SaleRow[] = useMemo(() => {
+    return sales
+      .map((sale) => {
+        const product = productMap.get(sale.product_id);
+        const seller = sellerMap.get(sale.seller_id);
+        const productName = product?.name ?? 'Produto removido';
+        return {
+          ...sale,
+          productName,
+          productCategory: classifyProductCategory(productName),
+          sellerName: seller?.name ?? 'Vendedor removido',
+        };
+      })
+      .sort((a, b) => new Date(b.sold_at).getTime() - new Date(a.sold_at).getTime());
+  }, [sales, productMap, sellerMap]);
 
-  const todayBreakdown = useMemo(() => computeBreakdown(todayRows), [todayRows]);
-  const weekBreakdown = useMemo(() => computeBreakdown(weekRows), [weekRows]);
-  const monthBreakdown = useMemo(() => computeBreakdown(monthRows), [monthRows]);
-  const selectedDateBreakdown = useMemo(() => computeBreakdown(selectedDateRows), [selectedDateRows]);
+  // ============================================================
+  // CÁLCULO DOS 3 CARDS PRINCIPAIS
+  // ============================================================
+  const metrics = useMemo(() => {
+    // Total de vendas/pedidos no período
+    const totalSalesCount = sales.length;
 
-  const sourceRows =
-    periodFilter === 'today' ? todayRows :
-    periodFilter === 'week' ? weekRows :
-    periodFilter === 'custom' ? selectedDateRows :
-    monthRows;
+    // Mapas para agregar quantidades
+    const deviceQtyMap = new Map<string, { name: string; qty: number }>();
+    const accessoryQtyMap = new Map<string, { name: string; qty: number }>();
 
-  const filteredRows = useMemo(() => {
-    let result = sourceRows;
-    if (productFilter !== 'all') result = result.filter((r) => r.product_id === productFilter);
-    if (categoryFilter !== 'all') result = result.filter((r) => r.productCategory === categoryFilter);
-    if (sellerFilter !== 'all') result = result.filter((r) => r.seller_id === sellerFilter);
+    for (const sale of sales) {
+      const prod = productMap.get(sale.product_id);
+      const prodName = prod?.name ?? 'Produto não identificado';
+      const isDevice = isDeviceProduct(prodName);
+      const isAccessory = isCountableAccessorySale(sale, prodName);
+      const qty = sale.quantity;
+
+      if (isDevice) {
+        // Regra Aparelho: só conta se começar com iPhone
+        const key = prodName.trim();
+        const current = deviceQtyMap.get(key) ?? { name: key, qty: 0 };
+        current.qty += qty;
+        deviceQtyMap.set(key, current);
+      } else if (isAccessory) {
+        // Regra Acessório: tudo que não for iPhone E valor > 0 (brindes R$ 0 não entram)
+        const key = prodName.trim();
+        const current = accessoryQtyMap.get(key) ?? { name: key, qty: 0 };
+        current.qty += qty;
+        accessoryQtyMap.set(key, current);
+      }
+    }
+
+    // Aparelho mais vendido
+    const sortedDevices = [...deviceQtyMap.values()].sort((a, b) => b.qty - a.qty);
+    const topDevice = sortedDevices[0] ?? null;
+
+    // Acessório mais vendido
+    const sortedAccessories = [...accessoryQtyMap.values()].sort((a, b) => b.qty - a.qty);
+    const topAccessory = sortedAccessories[0] ?? null;
+
+    return {
+      totalSalesCount,
+      topDevice,
+      topAccessory,
+    };
+  }, [sales, productMap]);
+
+  // ============================================================
+  // FILTRAGEM DA TABELA
+  // ============================================================
+  const filteredSales = useMemo(() => {
+    let list = salesRows;
+
+    if (productFilter !== 'all') {
+      list = list.filter((r) => r.product_id === productFilter);
+    }
+    if (categoryFilter !== 'all') {
+      list = list.filter((r) => r.productCategory === categoryFilter);
+    }
+    if (sellerFilter !== 'all') {
+      list = list.filter((r) => r.seller_id === sellerFilter);
+    }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      result = result.filter((r) => r.productName.toLowerCase().includes(q));
+      list = list.filter((r) => r.productName.toLowerCase().includes(q));
     }
-    return result;
-  }, [sourceRows, productFilter, categoryFilter, sellerFilter, search]);
 
-  const scrollToTable = () => {
-    tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return list;
+  }, [salesRows, productFilter, categoryFilter, sellerFilter, search]);
+
+  // Paginação
+  const totalPages = Math.max(1, Math.ceil(filteredSales.length / PAGE_SIZE));
+  const paginatedSales = useMemo(() => {
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    return filteredSales.slice(startIdx, startIdx + PAGE_SIZE);
+  }, [filteredSales, currentPage]);
+
+  const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value as DatePreset;
+    setDatePreset(val);
+    if (val === 'custom') {
+      setIsCustomModalOpen(true);
+    }
   };
 
-  const viewAll = (period: PeriodFilter) => {
-    setProductFilter('all');
-    setCategoryFilter('all');
-    setSellerFilter('all');
-    setSearch('');
-    setPeriodFilter(period);
-    setOpenPopover(null);
-    scrollToTable();
-  };
-
-  const now = new Date();
-  const weekRange = getWeekRange(now);
-  const tableLoading =
-    (periodFilter === 'month' && loadingMonth) ||
-    (periodFilter === 'custom' && loadingCustomDate) ||
-    ((periodFilter === 'today' || periodFilter === 'week') && loadingBase);
+  const isLoading = loadingBase || loadingSales;
 
   return (
-    <div className="flex-col gap-6" style={{ opacity: loadingBase ? 0.6 : 1 }}>
-      <div>
-        <h1 className="h1">Vendas</h1>
-        <p className="text-muted" style={{ marginTop: '4px' }}>
-          Gerencie as vendas realizadas na plataforma, acompanhe o desempenho dos vendedores e consulte o histórico por período.
-        </p>
-      </div>
+    <div className="sales-page-container">
+      {/* 1. Header com Título e Filtro de Período no Topo Direito */}
+      <div className="sales-header">
+        <div className="sales-header-left">
+          <h1 className="sales-header-title">Vendas</h1>
+          <p className="sales-header-subtitle">
+            Gerencie as vendas realizadas na plataforma, acompanhe o desempenho dos vendedores e consulte o histórico por período.
+          </p>
+        </div>
 
-      <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        <StatCard
-          icon={<CalendarClock size={22} />}
-          label="Vendas Hoje"
-          value={String(todayBreakdown.totalSales)}
-          trend={`${todayBreakdown.totalUnits} produtos vendidos`}
-          active={openPopover === 'today'}
-          onClick={() => setOpenPopover('today')}
-        />
-        <StatCard
-          icon={<CalendarRange size={22} />}
-          label="Vendas da Semana"
-          value={String(weekBreakdown.totalSales)}
-          trend={`${weekBreakdown.totalUnits} produtos vendidos`}
-          active={openPopover === 'week'}
-          onClick={() => setOpenPopover('week')}
-        />
-        <MonthStatCard
-          viewDate={viewDate}
-          value={loadingMonth ? '...' : String(monthBreakdown.totalSales)}
-          trend={loadingMonth ? 'carregando...' : `${monthBreakdown.totalUnits} produtos vendidos`}
-          active={openPopover === 'month'}
-          onOpenBreakdown={() => setOpenPopover('month')}
-          onOpenPicker={() => setMonthPickerOpen(true)}
-          onNavigate={(delta) => setViewDate((d) => addMonths(d, delta))}
-        />
-        <StatCard
-          icon={<CalendarDays size={22} />}
-          label="Vendas por Data"
-          value={selectedDate ? (loadingCustomDate ? '...' : String(selectedDateBreakdown.totalSales)) : '—'}
-          trend={selectedDate ? formatDate(selectedDate.toISOString()) : 'Clique para escolher uma data'}
-          active={openPopover === 'date'}
-          onClick={() => setOpenPopover('date')}
-        />
-      </div>
+        <div className="sales-date-filter-container">
+          <div className="sales-date-filter-label">
+            <Calendar size={16} color="var(--primary)" />
+            <span>Período:</span>
+          </div>
 
-      <div className="sales-filters card">
-        <div className="sales-filters-row">
-          <select value={productFilter} onChange={(e) => setProductFilter(e.target.value)}>
-            <option value="all">Todos os produtos</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <select
+            className="sales-date-select"
+            value={datePreset}
+            onChange={handlePresetChange}
+          >
+            <option value="today">Hoje</option>
+            <option value="yesterday">Ontem</option>
+            <option value="this_week">Esta semana</option>
+            <option value="this_month">Este mês</option>
+            <option value="last_month">Mês anterior</option>
+            <option value="custom">
+              {datePreset === 'custom' ? `Personalizado (${activeRange.label})` : 'Período personalizado...'}
+            </option>
           </select>
 
-          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as typeof categoryFilter)}>
+          {datePreset === 'custom' && (
+            <button
+              className="sales-custom-date-btn"
+              onClick={() => setIsCustomModalOpen(true)}
+              title="Ajustar datas do período personalizado"
+            >
+              <SlidersHorizontal size={14} />
+              <span>Ajustar</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Os 3 Cards Principais Repaginados */}
+      <div className="sales-cards-grid">
+        {/* Card 1 — Vendas Realizadas */}
+        <div className="sales-metric-card">
+          <div className="sales-metric-header">
+            <div className="sales-metric-icon-box sales-total">
+              <ShoppingBag size={22} />
+            </div>
+            <span className="sales-metric-badge">Volume</span>
+          </div>
+          <span className="sales-metric-title">Vendas Realizadas</span>
+          <div className="sales-metric-main-value">
+            {isLoading ? '...' : `${metrics.totalSalesCount} ${metrics.totalSalesCount === 1 ? 'venda' : 'vendas'}`}
+          </div>
+          <span className="sales-metric-subtext">no período selecionado</span>
+        </div>
+
+        {/* Card 2 — Aparelho Mais Vendido */}
+        <div className="sales-metric-card">
+          <div className="sales-metric-header">
+            <div className="sales-metric-icon-box device-top">
+              <Smartphone size={22} />
+            </div>
+            <span className="sales-metric-badge" style={{ color: '#10B981' }}>iPhone</span>
+          </div>
+          <span className="sales-metric-title">Aparelho Mais Vendido</span>
+          <div
+            className="sales-metric-main-value"
+            title={metrics.topDevice?.name ?? 'Sem vendas de aparelhos'}
+          >
+            {isLoading
+              ? '...'
+              : metrics.topDevice
+              ? metrics.topDevice.name
+              : 'Sem vendas de aparelhos'}
+          </div>
+          <span className="sales-metric-subtext">
+            {metrics.topDevice ? (
+              <>
+                <strong className="sales-metric-subtext-highlight">
+                  {metrics.topDevice.qty}
+                </strong>{' '}
+                {metrics.topDevice.qty === 1 ? 'unidade vendida' : 'unidades vendidas'}
+              </>
+            ) : (
+              '0 unidades vendidas'
+            )}
+          </span>
+        </div>
+
+        {/* Card 3 — Acessório Mais Vendido */}
+        <div className="sales-metric-card">
+          <div className="sales-metric-header">
+            <div className="sales-metric-icon-box accessory-top">
+              <Headphones size={22} />
+            </div>
+            <span className="sales-metric-badge" style={{ color: '#A855F7' }}>Acessório</span>
+          </div>
+          <span className="sales-metric-title">Acessório Mais Vendido</span>
+          <div
+            className="sales-metric-main-value"
+            title={metrics.topAccessory?.name ?? 'Sem vendas de acessórios'}
+          >
+            {isLoading
+              ? '...'
+              : metrics.topAccessory
+              ? metrics.topAccessory.name
+              : 'Sem vendas de acessórios'}
+          </div>
+          <span className="sales-metric-subtext">
+            {metrics.topAccessory ? (
+              <>
+                <strong className="sales-metric-subtext-highlight">
+                  {metrics.topAccessory.qty}
+                </strong>{' '}
+                {metrics.topAccessory.qty === 1 ? 'unidade vendida' : 'unidades vendidas'}
+              </>
+            ) : (
+              '0 unidades vendidas'
+            )}
+          </span>
+        </div>
+      </div>
+
+      {/* 3. Filtros Secundários da Tabela */}
+      <div className="sales-filters-card">
+        <div className="sales-filters-grid">
+          <select
+            value={productFilter}
+            onChange={(e) => {
+              setProductFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">Todos os produtos</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={categoryFilter}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value as typeof categoryFilter);
+              setCurrentPage(1);
+            }}
+          >
             <option value="all">Todas as categorias</option>
             <option value="Aparelhos">Aparelhos</option>
             <option value="Acessórios">Acessórios</option>
           </select>
 
-          <select value={sellerFilter} onChange={(e) => setSellerFilter(e.target.value)}>
+          <select
+            value={sellerFilter}
+            onChange={(e) => {
+              setSellerFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
             <option value="all">Todos os vendedores</option>
-            {sellers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {sellers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
           </select>
 
-          <select value={periodFilter} onChange={(e) => setPeriodFilter(e.target.value as PeriodFilter)}>
-            <option value="month">{MONTH_NAMES_FULL[viewDate.getMonth()]} de {viewDate.getFullYear()}</option>
-            <option value="today">Hoje</option>
-            <option value="week">Esta semana</option>
-            {selectedDate && <option value="custom">{formatDate(selectedDate.toISOString())}</option>}
-          </select>
-
-          <div className="search-bar sales-search">
-            <Search size={16} color="var(--text-muted)" />
+          <div className="sales-search-wrapper">
+            <Search size={16} className="sales-search-icon" />
             <input
               type="text"
+              className="sales-search-input"
               placeholder="Buscar por produto..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
         </div>
       </div>
 
-      <div className="inventory-table-card" ref={tableRef} style={{ opacity: tableLoading ? 0.6 : 1 }}>
-        <table className="inventory-table">
-          <thead>
-            <tr>
-              <th>PRODUTO</th>
-              <th>CATEGORIA</th>
-              <th>QUANTIDADE</th>
-              <th>DATA DA COMPRA</th>
-              <th>VENDEDOR</th>
-              <th>AÇÕES</th>
-            </tr>
-          </thead>
-          <tbody>
-            {!tableLoading && filteredRows.length === 0 && (
+      {/* 4. Tabela de Listagem de Vendas */}
+      <div className="sales-table-card" style={{ opacity: isLoading ? 0.6 : 1 }}>
+        <div className="sales-table-wrapper">
+          <table className="sales-table">
+            <thead>
               <tr>
-                <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  Nenhuma venda encontrada para os filtros selecionados.
-                </td>
+                <th>PRODUTO</th>
+                <th>CATEGORIA</th>
+                <th>QUANTIDADE</th>
+                <th>DATA DA COMPRA</th>
+                <th>VENDEDOR</th>
+                <th>AÇÕES</th>
               </tr>
-            )}
-            {filteredRows.map((row) => (
-              <tr key={row.id}>
-                <td>
-                  <div className="product-info">
-                    <span className="product-name">{row.productName}</span>
-                  </div>
-                </td>
-                <td>
-                  {row.productCategory && (
-                    <span className={`category-badge ${row.productCategory === 'Aparelhos' ? 'aparelhos' : 'acessorios'}`}>
+            </thead>
+            <tbody>
+              {!isLoading && paginatedSales.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    Nenhuma venda encontrada para o período e filtros selecionados.
+                  </td>
+                </tr>
+              )}
+              {paginatedSales.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <span className="product-name-cell">{row.productName}</span>
+                  </td>
+                  <td>
+                    <span
+                      className={`category-badge ${
+                        row.productCategory === 'Aparelhos' ? 'aparelhos' : 'acessorios'
+                      }`}
+                    >
                       {row.productCategory}
                     </span>
-                  )}
-                </td>
-                <td className="qty-cell">{row.quantity} un.</td>
-                <td>{formatDate(row.sold_at)}</td>
-                <td>{row.sellerName}</td>
-                <td>
-                  <button className="sales-view-btn" onClick={() => setDetailSale(row)}>
-                    <Eye size={14} /> Visualizar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </td>
+                  <td className="qty-cell">{row.quantity} un.</td>
+                  <td>{formatDate(row.sold_at)}</td>
+                  <td>{row.sellerName}</td>
+                  <td>
+                    <button
+                      className="sales-view-btn"
+                      onClick={() => setDetailSale(row)}
+                      title="Ver detalhes completos da venda"
+                    >
+                      <Eye size={14} />
+                      <span>Visualizar</span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 5. Barra de Paginação */}
+        {filteredSales.length > 0 && (
+          <div className="sales-pagination-bar">
+            <span className="sales-pagination-info">
+              Mostrando{' '}
+              <strong>
+                {Math.min(filteredSales.length, (currentPage - 1) * PAGE_SIZE + 1)} -{' '}
+                {Math.min(filteredSales.length, currentPage * PAGE_SIZE)}
+              </strong>{' '}
+              de <strong>{filteredSales.length}</strong> vendas no período
+            </span>
+
+            <div className="sales-pagination-controls">
+              <button
+                className="sales-pagination-btn"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft size={16} />
+                <span>Anterior</span>
+              </button>
+
+              <span className="sales-pagination-page-indicator">
+                Página {currentPage} de {totalPages}
+              </span>
+
+              <button
+                className="sales-pagination-btn"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <span>Próxima</span>
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {openPopover === 'today' && (
-        <BreakdownPopover
-          title="Vendas de Hoje"
-          subtitle={formatDate(now.toISOString())}
-          breakdown={todayBreakdown}
-          emptyLabel="Nenhuma venda registrada hoje ainda."
-          onClose={() => setOpenPopover(null)}
-          onViewAll={() => viewAll('today')}
-        />
-      )}
-      {openPopover === 'week' && (
-        <BreakdownPopover
-          title="Vendas da Semana"
-          subtitle={`${formatDate(weekRange.start.toISOString())} até ${formatDate(new Date(weekRange.end.getTime() - 86400000).toISOString())}`}
-          breakdown={weekBreakdown}
-          emptyLabel="Nenhuma venda registrada esta semana."
-          onClose={() => setOpenPopover(null)}
-          onViewAll={() => viewAll('week')}
-        />
-      )}
-      {openPopover === 'month' && (
-        <BreakdownPopover
-          title="Vendas do Mês"
-          subtitle={`${MONTH_NAMES_FULL[viewDate.getMonth()]} de ${viewDate.getFullYear()}`}
-          breakdown={monthBreakdown}
-          loading={loadingMonth}
-          emptyLabel="Nenhuma venda registrada neste mês."
-          onClose={() => setOpenPopover(null)}
-          onViewAll={() => viewAll('month')}
-        />
-      )}
-      {openPopover === 'date' && (
-        <DatePopover
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          breakdown={selectedDate ? selectedDateBreakdown : null}
-          loading={loadingCustomDate}
-          onClose={() => setOpenPopover(null)}
-          onViewAll={() => viewAll('custom')}
-        />
-      )}
-      {monthPickerOpen && (
-        <MonthYearPopover
-          viewDate={viewDate}
-          onSelect={setViewDate}
-          onClose={() => setMonthPickerOpen(false)}
+      {/* Modal de Período Personalizado */}
+      {isCustomModalOpen && (
+        <CustomRangeModal
+          initialStart={customRange.start}
+          initialEnd={customRange.end}
+          onApply={(start, end) => {
+            setCustomRange({ start, end });
+            setDatePreset('custom');
+          }}
+          onClose={() => setIsCustomModalOpen(false)}
         />
       )}
 
+      {/* Modal de Detalhes da Venda */}
       <SaleDetailModal sale={detailSale} onClose={() => setDetailSale(null)} />
     </div>
   );

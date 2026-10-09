@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { Camera } from 'lucide-react';
+import { SellerAvatar } from '../components/SellerAvatar';
+import { SellerPhotoModal } from '../components/SellerPhotoModal';
 import {
   fetchPanelSettings,
   updatePanelSettings,
@@ -21,6 +24,7 @@ export function Settings() {
   const [loading, setLoading] = useState(true);
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [kommoUsers, setKommoUsers] = useState<KommoUser[]>([]);
+  const [editingPhotoSeller, setEditingPhotoSeller] = useState<Seller | null>(null);
 
   useEffect(() => {
     fetchPanelSettings()
@@ -149,10 +153,9 @@ export function Settings() {
 
       <div className="card" style={{maxWidth: '600px'}}>
         <div style={{marginBottom: '16px'}}>
-          <h3 style={{fontWeight: 600, marginBottom: '4px'}}>Vendedores no Ranking</h3>
+          <h3 style={{fontWeight: 600, marginBottom: '4px'}}>Vendedores e Fotos de Perfil</h3>
           <p className="text-muted text-sm">
-            Escolha quais vendedores aparecem nos rankings (Dashboard, Vendedores, Painel TV e Previsão).
-            Os demais continuam sincronizados normalmente, só ficam fora das listas.
+            Gerencie as fotos e defina quais vendedores aparecem nos rankings (Dashboard, Vendedores, Painel TV e Previsão).
           </p>
         </div>
 
@@ -164,23 +167,61 @@ export function Settings() {
             <div
               key={seller.id}
               className="flex-between"
-              style={{paddingBottom: '12px', borderBottom: '1px solid var(--border-color)'}}
+              style={{paddingBottom: '12px', borderBottom: '1px solid var(--border-color)', gap: '12px'}}
             >
-              <span>{seller.name}</span>
-              <button
-                onClick={() => toggleSellerRanking(seller)}
-                style={{
-                  width: '44px', height: '24px', borderRadius: '12px',
-                  backgroundColor: seller.show_in_ranking ? 'var(--primary)' : 'var(--border-color)',
-                  position: 'relative', transition: 'all 0.2s'
-                }}
-              >
-                <div style={{
-                  width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff',
-                  position: 'absolute', top: '2px', left: seller.show_in_ranking ? '22px' : '2px',
-                  transition: 'all 0.2s'
-                }} />
-              </button>
+              <div className="flex-center gap-3">
+                <SellerAvatar
+                  name={seller.name}
+                  photoUrl={seller.photo_url}
+                  size="sm"
+                  editable
+                  onEdit={() => setEditingPhotoSeller(seller)}
+                />
+                <div>
+                  <div style={{fontWeight: 500}}>{seller.name}</div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingPhotoSeller(seller)}
+                    className="text-muted"
+                    style={{
+                      fontSize: '12px',
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      color: 'var(--primary)',
+                      marginTop: '2px',
+                    }}
+                  >
+                    <Camera size={12} />
+                    {seller.photo_url ? 'Alterar foto' : 'Adicionar foto'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-center gap-3">
+                <span className="text-muted text-xs">
+                  {seller.show_in_ranking ? 'No ranking' : 'Oculto'}
+                </span>
+                <button
+                  onClick={() => toggleSellerRanking(seller)}
+                  style={{
+                    width: '44px', height: '24px', borderRadius: '12px',
+                    backgroundColor: seller.show_in_ranking ? 'var(--primary)' : 'var(--border-color)',
+                    position: 'relative', transition: 'all 0.2s'
+                  }}
+                  title={seller.show_in_ranking ? 'Ocultar do ranking' : 'Exibir no ranking'}
+                >
+                  <div style={{
+                    width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff',
+                    position: 'absolute', top: '2px', left: seller.show_in_ranking ? '22px' : '2px',
+                    transition: 'all 0.2s'
+                  }} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -232,6 +273,18 @@ export function Settings() {
           ))}
         </div>
       </div>
+
+      {editingPhotoSeller && (
+        <SellerPhotoModal
+          seller={editingPhotoSeller}
+          onClose={() => setEditingPhotoSeller(null)}
+          onSaved={(updatedSeller) => {
+            setSellers((prev) =>
+              prev.map((s) => (s.id === updatedSeller.id ? { ...s, photo_url: updatedSeller.photo_url } : s))
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

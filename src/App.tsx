@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { RequireAuth } from './components/RequireAuth';
@@ -23,7 +23,9 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route element={<RequireAuth />}>
+              <Route path="/painel-loja" element={<TVPanel />} />
               <Route path="/tv" element={<TVPanel />} />
+              <Route path="/dashboard-loja" element={<TVPanel />} />
               <Route path="/" element={<Layout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="forecast" element={<Forecast />} />

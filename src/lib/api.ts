@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { classifyProductCategory } from './productClassifier';
 import type {
   Seller,
   Product,
@@ -12,21 +13,46 @@ import type {
 
 const PAGE_SIZE = 1000;
 
-/** O Supabase corta qualquer select em 1000 linhas por padrão — pagina até esgotar. */
-async function fetchAllRows<T>(
-  queryPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
-): Promise<T[]> {
-  const rows: T[] = [];
-  let from = 0;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
+const PAGE_BATCH = 4;
+
+type PageResult<T> = { data: T[] | null; error: { message: string } | null };
+
+/**
+ * O Supabase corta qualquer select em 1000 linhas por padrão — pagina até esgotar.
+ * A 1ª página vai sozinha (a maioria das consultas cabe nela); se vier cheia, as
+ * seguintes são buscadas em paralelo, em lotes, em vez de uma por vez.
+ */
+async function fetchAllRows<T>(queryPage: (from: number, to: number) => PromiseLike<PageResult<T>>): Promise<T[]> {
+  const fetchPage = async (page: number): Promise<T[]> => {
+    const from = page * PAGE_SIZE;
     const { data, error } = await queryPage(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(error.message);
-    rows.push(...(data ?? []));
-    if (!data || data.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
+    return data ?? [];
+  };
+
+  const rows = await fetchPage(0);
+  if (rows.length < PAGE_SIZE) return rows;
+
+  for (let page = 1; ; page += PAGE_BATCH) {
+    const batch = await Promise.all(Array.from({ length: PAGE_BATCH }, (_, i) => fetchPage(page + i)));
+    for (const pageRows of batch) rows.push(...pageRows);
+    if (batch.some((pageRows) => pageRows.length < PAGE_SIZE)) return rows;
   }
-  return rows;
+}
+
+const CACHE_TTL_MS = 60_000;
+const cache = new Map<string, { at: number; promise: Promise<unknown> }>();
+
+/** Reaproveita por 1 min listas grandes que várias telas pedem iguais (e junta chamadas simultâneas). */
+function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.promise as Promise<T>;
+  const promise = load();
+  cache.set(key, { at: Date.now(), promise });
+  promise.catch(() => {
+    if (cache.get(key)?.promise === promise) cache.delete(key);
+  });
+  return promise;
 }
 
 export async function fetchSellers(): Promise<Seller[]> {
@@ -66,8 +92,10 @@ export async function updateSellerKommoMapping(id: string, kommo_user_id: string
 }
 
 export async function fetchProducts(): Promise<Product[]> {
-  return fetchAllRows<Product>((from, to) =>
-    supabase.from('products').select('*').order('name').range(from, to)
+  return cached('products', () =>
+    fetchAllRows<Product>((from, to) =>
+      supabase.from('products').select('*').order('name').order('id').range(from, to)
+    )
   );
 }
 
@@ -89,12 +117,14 @@ export async function insertProduct(input: {
     .select()
     .single();
   if (error) throw error;
+  cache.delete('products');
   return data;
 }
 
 export async function updateProductStock(id: string, stock: number): Promise<void> {
   const { error } = await supabase.from('products').update({ stock }).eq('id', id);
   if (error) throw error;
+  cache.delete('products');
 }
 
 export async function fetchSalesInRange(start: Date, end: Date): Promise<Sale[]> {
@@ -105,6 +135,7 @@ export async function fetchSalesInRange(start: Date, end: Date): Promise<Sale[]>
       .gte('sold_at', start.toISOString())
       .lt('sold_at', end.toISOString())
       .order('sold_at')
+      .order('id')
       .range(from, to)
   );
 }
@@ -112,13 +143,25 @@ export async function fetchSalesInRange(start: Date, end: Date): Promise<Sale[]>
 /** Todas as vendas já registradas na plataforma, mais recentes primeiro. */
 export async function fetchAllSales(): Promise<Sale[]> {
   return fetchAllRows<Sale>((from, to) =>
-    supabase.from('sales').select('*').order('sold_at', { ascending: false }).range(from, to)
+    supabase.from('sales').select('*').order('sold_at', { ascending: false }).order('id').range(from, to)
   );
 }
 
-export async function fetchAllConversations(): Promise<Conversation[]> {
-  return fetchAllRows<Conversation>((from, to) =>
-    supabase.from('conversations').select('*').order('id').range(from, to)
+/** Só as colunas usadas nos rankings e no modal de vendas — `raw_payload` e a análise completa ficam de fora. */
+export type ConversationSummary = Pick<
+  Conversation,
+  'id' | 'seller_id' | 'result_type' | 'occurred_at' | 'product' | 'client_name'
+>;
+
+export async function fetchAllConversations(): Promise<ConversationSummary[]> {
+  return cached('conversations', () =>
+    fetchAllRows<ConversationSummary>((from, to) =>
+      supabase
+        .from('conversations')
+        .select('id, seller_id, result_type, occurred_at, product, client_name')
+        .order('id')
+        .range(from, to)
+    )
   );
 }
 
@@ -181,6 +224,13 @@ export async function updatePanelSettings(
   if (error) throw error;
 }
 
+export { 
+  classifyProductCategory, 
+  isDeviceProduct, 
+  isCountableAccessorySale, 
+  isCountableSale 
+} from './productClassifier';
+
 export interface SellerPerformance {
   seller: Seller;
   sold: number;
@@ -193,7 +243,7 @@ export interface SellerPerformance {
 export function computeSellerPerformance(
   sellers: Seller[],
   sales: Sale[],
-  conversations: Conversation[],
+  conversations: Pick<Conversation, 'seller_id' | 'result_type'>[],
   products?: Product[]
 ): SellerPerformance[] {
   const soldBySeller = new Map<string, number>();
@@ -203,16 +253,30 @@ export function computeSellerPerformance(
 
   for (const sale of sales) {
     const qty = sale.quantity;
-    soldBySeller.set(sale.seller_id, (soldBySeller.get(sale.seller_id) ?? 0) + qty);
+    const amount = Number(sale.amount) || 0;
 
     if (productMap) {
       const prod = productMap.get(sale.product_id);
       if (prod) {
-        if (prod.category === 'Aparelhos') {
+        const category = classifyProductCategory(prod.name);
+        if (category === 'Aparelhos') {
           devicesSoldBySeller.set(sale.seller_id, (devicesSoldBySeller.get(sale.seller_id) ?? 0) + qty);
-        } else if (prod.category === 'Acessórios') {
-          accessoriesSoldBySeller.set(sale.seller_id, (accessoriesSoldBySeller.get(sale.seller_id) ?? 0) + qty);
+          soldBySeller.set(sale.seller_id, (soldBySeller.get(sale.seller_id) ?? 0) + qty);
+        } else if (category === 'Acessórios') {
+          // Acessórios só contam se tiverem valor de venda > 0 (brindes/cortesias zerados não entram)
+          if (amount > 0) {
+            accessoriesSoldBySeller.set(sale.seller_id, (accessoriesSoldBySeller.get(sale.seller_id) ?? 0) + qty);
+            soldBySeller.set(sale.seller_id, (soldBySeller.get(sale.seller_id) ?? 0) + qty);
+          }
         }
+      } else {
+        if (amount > 0) {
+          soldBySeller.set(sale.seller_id, (soldBySeller.get(sale.seller_id) ?? 0) + qty);
+        }
+      }
+    } else {
+      if (amount > 0) {
+        soldBySeller.set(sale.seller_id, (soldBySeller.get(sale.seller_id) ?? 0) + qty);
       }
     }
   }
@@ -258,3 +322,110 @@ export function getDayRange(date: Date): { start: Date; end: Date } {
   const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);
   return { start, end };
 }
+
+/** Atualiza a URL da foto do vendedor na tabela `sellers` */
+export async function updateSellerPhoto(sellerId: string, photo_url: string | null): Promise<void> {
+  const { error } = await supabase.from('sellers').update({ photo_url }).eq('id', sellerId);
+  if (error) throw error;
+}
+
+/**
+ * Processa e otimiza uma imagem no cliente (Canvas API):
+ * - Valida se é imagem
+ * - Redimensiona para quadrado centralizado de até maxDim x maxDim
+ * - Exporta WebP/JPEG de alta qualidade e tamanho ultra-reduzido
+ */
+export async function processAndOptimizeImage(
+  file: File,
+  maxDim = 400
+): Promise<{ blob: Blob; dataUrl: string }> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      return reject(new Error('O arquivo selecionado não é uma imagem válida.'));
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Erro ao ler o arquivo de imagem.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Falha ao carregar a imagem para processamento.'));
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calcula crop centralizado quadrado
+        const minSide = Math.min(width, height);
+        const startX = (width - minSide) / 2;
+        const startY = (height - minSide) / 2;
+
+        const targetDim = Math.min(maxDim, minSide);
+        canvas.width = targetDim;
+        canvas.height = targetDim;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Não foi possível obter o contexto 2D do Canvas.'));
+
+        // Renderiza com suavização
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, startX, startY, minSide, minSide, 0, 0, targetDim, targetDim);
+
+        // Tenta WebP, fallback para JPEG
+        let mime = 'image/webp';
+        let dataUrl = canvas.toDataURL(mime, 0.88);
+        if (!dataUrl.startsWith('data:image/webp')) {
+          mime = 'image/jpeg';
+          dataUrl = canvas.toDataURL(mime, 0.88);
+        }
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return reject(new Error('Falha ao gerar o blob da imagem.'));
+            resolve({ blob, dataUrl });
+          },
+          mime,
+          0.88
+        );
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Faz upload do avatar do vendedor para o Supabase Storage ou salva como Data-URL otimizada.
+ * Atualiza o registro do vendedor no banco de dados.
+ */
+export async function uploadSellerAvatar(sellerId: string, file: File): Promise<string> {
+  const { blob, dataUrl } = await processAndOptimizeImage(file, 400);
+
+  let finalPhotoUrl = dataUrl;
+
+  try {
+    const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+    const fileName = `${sellerId}-${Date.now()}.${ext}`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('seller-avatars')
+      .upload(fileName, blob, {
+        contentType: blob.type,
+        upsert: true,
+      });
+
+    if (!uploadError && uploadData) {
+      const { data: pubData } = supabase.storage.from('seller-avatars').getPublicUrl(fileName);
+      if (pubData?.publicUrl) {
+        finalPhotoUrl = pubData.publicUrl;
+      }
+    }
+  } catch (err) {
+    console.warn('Storage upload fallback to optimized data-url:', err);
+  }
+
+  // Atualiza no banco
+  await updateSellerPhoto(sellerId, finalPhotoUrl);
+  return finalPhotoUrl;
+}
+

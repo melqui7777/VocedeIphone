@@ -63,12 +63,27 @@
   border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.4);
   font-size: 15px;
-  background-color: rgba(255, 255, 255, 0.92);
-  color: var(--text-dark);
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.login-field input::placeholder {
+  color: #6b7280 !important;
 }
 
 .login-field input:focus {
+  background-color: #ffffff !important;
+  color: #111827 !important;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(10, 37, 255, 0.25) !important;
+}
+
+[data-theme="dark"] .login-field input,
+[data-theme="dark"] .login-field input:focus {
+  background-color: #ffffff !important;
+  color: #111827 !important;
 }
 
 .login-error {

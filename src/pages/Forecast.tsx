@@ -8,6 +8,7 @@ import {
   fetchSalesInRange,
   fetchProducts,
   fetchVisibleSellers,
+  classifyProductCategory,
   getMonthRange,
 } from '../lib/api';
 import type { Sale, Product, Seller, Goals } from '../lib/database.types';
@@ -76,8 +77,14 @@ function computeForecast(sales: Sale[], products: Product[], sellers: Seller[], 
   const productMap = new Map(products.map((p) => [p.id, p]));
   const soldByCategory = { Aparelhos: 0, Acessórios: 0 };
   sales.forEach((s) => {
-    const category = productMap.get(s.product_id)?.category;
-    if (category) soldByCategory[category] += s.quantity;
+    const prod = productMap.get(s.product_id);
+    const category = classifyProductCategory(prod?.name);
+    const amount = Number(s.amount) || 0;
+    if (category === 'Aparelhos') {
+      soldByCategory.Aparelhos += s.quantity;
+    } else if (category === 'Acessórios' && amount > 0) {
+      soldByCategory.Acessórios += s.quantity;
+    }
   });
 
   const devicesTarget = goals.monthly_devices_target;
@@ -98,7 +105,14 @@ function computeForecast(sales: Sale[], products: Product[], sellers: Seller[], 
   ];
 
   const soldBySeller = new Map<string, number>();
-  sales.forEach((s) => soldBySeller.set(s.seller_id, (soldBySeller.get(s.seller_id) ?? 0) + s.quantity));
+  sales.forEach((s) => {
+    const prod = productMap.get(s.product_id);
+    const category = classifyProductCategory(prod?.name);
+    const amount = Number(s.amount) || 0;
+    if (category === 'Aparelhos' || (category === 'Acessórios' && amount > 0) || (!category && amount > 0)) {
+      soldBySeller.set(s.seller_id, (soldBySeller.get(s.seller_id) ?? 0) + s.quantity);
+    }
+  });
   const perSellerTarget = activeSellerCount > 0 ? Math.round((devicesTarget + accessoriesTarget) / activeSellerCount) : 0;
 
   const sellerForecast: SellerForecastItem[] = sellers
