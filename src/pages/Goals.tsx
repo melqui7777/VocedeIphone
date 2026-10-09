@@ -42,12 +42,12 @@ export function Goals() {
   };
 
   return (
-    <div className="flex-col gap-6">
-      <div className="flex-between" style={{marginBottom: '24px'}}>
+    <div className="flex-col gap-6" style={{ width: '100%' }}>
+      <div className="flex-between" style={{marginBottom: '16px', flexWrap: 'wrap', gap: '12px'}}>
         <h1 className="h1">Configuração de Metas</h1>
       </div>
 
-      <div className="grid-dashboard" style={{gridTemplateColumns: '1fr 1fr', opacity: loading ? 0.6 : 1}}>
+      <div className="grid-dashboard" style={{opacity: loading ? 0.6 : 1}}>
         <div className="card flex-col gap-4">
           <h2 className="h2">Meta Semanal</h2>
           <div className="flex-col gap-2">
@@ -56,7 +56,7 @@ export function Goals() {
               type="number"
               value={values.weekly_devices_target}
               onChange={(e) => setField('weekly_devices_target', e.target.value)}
-              style={{padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '15px'}}
+              style={{padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '15px', width: '100%', boxSizing: 'border-box'}}
             />
           </div>
           <div className="flex-col gap-2">
@@ -65,7 +65,7 @@ export function Goals() {
               type="number"
               value={values.weekly_accessories_target}
               onChange={(e) => setField('weekly_accessories_target', e.target.value)}
-              style={{padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '15px'}}
+              style={{padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '15px', width: '100%', boxSizing: 'border-box'}}
             />
           </div>
         </div>
@@ -78,7 +78,7 @@ export function Goals() {
               type="number"
               value={values.monthly_devices_target}
               onChange={(e) => setField('monthly_devices_target', e.target.value)}
-              style={{padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '15px'}}
+              style={{padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '15px', width: '100%', boxSizing: 'border-box'}}
             />
           </div>
           <div className="flex-col gap-2">
@@ -87,13 +87,13 @@ export function Goals() {
               type="number"
               value={values.monthly_accessories_target}
               onChange={(e) => setField('monthly_accessories_target', e.target.value)}
-              style={{padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '15px'}}
+              style={{padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '15px', width: '100%', boxSizing: 'border-box'}}
             />
           </div>
         </div>
       </div>
 
-      <div className="flex-center gap-4" style={{marginTop: '16px'}}>
+      <div className="flex-center gap-4" style={{marginTop: '16px', flexWrap: 'wrap'}}>
         <button className="btn-primary" style={{backgroundColor: 'transparent', color: 'var(--text-dark)', border: '1px solid var(--border-color)'}} onClick={handleReset}>
           Restaurar Padrão
         </button>

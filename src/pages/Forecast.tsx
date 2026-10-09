@@ -192,7 +192,7 @@ export function Forecast() {
       </div>
 
       {/* Top Cards Row */}
-      <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      <div className="forecast-cards-grid">
         <div className="stat-card">
           <div className="stat-icon-wrapper">
             <Package size={22} color="var(--primary)" />
@@ -239,13 +239,13 @@ export function Forecast() {
       </div>
 
       {/* Main Chart Section */}
-      <div className="card" style={{ height: '420px', display: 'flex', flexDirection: 'column' }}>
-        <div className="flex-between" style={{ marginBottom: '20px' }}>
+      <div className="card forecast-chart-card">
+        <div className="forecast-chart-header">
           <div>
             <h2 className="h2">{currentData?.title ?? ''}</h2>
             <span className="text-muted text-sm">Trajetória projetada em unidades de produtos até o fim do mês</span>
           </div>
-          <div className="flex-center gap-4 text-sm">
+          <div className="forecast-chart-legend text-sm">
             <div className="flex-center gap-2">
               <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#0A25FF', display: 'inline-block' }}></span>
               <span className="text-muted">Projeção de Unidades</span>

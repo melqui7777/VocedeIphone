@@ -58,14 +58,14 @@ export function Settings() {
   };
 
   return (
-    <div className="flex-col gap-6">
-      <div className="flex-between" style={{marginBottom: '24px'}}>
+    <div className="flex-col gap-6" style={{ width: '100%' }}>
+      <div className="flex-between" style={{marginBottom: '16px', flexWrap: 'wrap', gap: '12px'}}>
         <h1 className="h1">Configurações do Painel</h1>
       </div>
 
-      <div className="card" style={{maxWidth: '600px', opacity: loading ? 0.6 : 1}}>
+      <div className="card" style={{maxWidth: '600px', width: '100%', opacity: loading ? 0.6 : 1}}>
         <div className="flex-col gap-6">
-          <div className="flex-between" style={{paddingBottom: '16px', borderBottom: '1px solid var(--border-color)'}}>
+          <div className="flex-between" style={{paddingBottom: '16px', borderBottom: '1px solid var(--border-color)', gap: '12px'}}>
             <div>
               <h3 style={{fontWeight: 600, marginBottom: '4px'}}>Exibir Ranking</h3>
               <p className="text-muted text-sm">Mostra o ranking de vendedores no dashboard principal.</p>
@@ -75,8 +75,9 @@ export function Settings() {
               style={{
                 width: '44px', height: '24px', borderRadius: '12px',
                 backgroundColor: settings.show_ranking ? 'var(--primary)' : 'var(--border-color)',
-                position: 'relative', transition: 'all 0.2s'
+                position: 'relative', transition: 'all 0.2s', flexShrink: 0
               }}
+              type="button"
             >
               <div style={{
                 width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff',
@@ -86,7 +87,7 @@ export function Settings() {
             </button>
           </div>
 
-          <div className="flex-between" style={{paddingBottom: '16px', borderBottom: '1px solid var(--border-color)'}}>
+          <div className="flex-between" style={{paddingBottom: '16px', borderBottom: '1px solid var(--border-color)', gap: '12px'}}>
             <div>
               <h3 style={{fontWeight: 600, marginBottom: '4px'}}>Exibir Metas</h3>
               <p className="text-muted text-sm">Mostra os cards de meta da semana e do mês.</p>
@@ -96,8 +97,9 @@ export function Settings() {
               style={{
                 width: '44px', height: '24px', borderRadius: '12px',
                 backgroundColor: settings.show_goals ? 'var(--primary)' : 'var(--border-color)',
-                position: 'relative', transition: 'all 0.2s'
+                position: 'relative', transition: 'all 0.2s', flexShrink: 0
               }}
+              type="button"
             >
               <div style={{
                 width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff',
@@ -107,7 +109,7 @@ export function Settings() {
             </button>
           </div>
 
-          <div className="flex-between" style={{paddingBottom: '16px', borderBottom: '1px solid var(--border-color)'}}>
+          <div className="flex-between" style={{paddingBottom: '16px', borderBottom: '1px solid var(--border-color)', gap: '12px'}}>
             <div>
               <h3 style={{fontWeight: 600, marginBottom: '4px'}}>Exibir Produtos</h3>
               <p className="text-muted text-sm">Mostra os produtos mais vendidos e estoque crítico.</p>
@@ -117,8 +119,9 @@ export function Settings() {
               style={{
                 width: '44px', height: '24px', borderRadius: '12px',
                 backgroundColor: settings.show_products ? 'var(--primary)' : 'var(--border-color)',
-                position: 'relative', transition: 'all 0.2s'
+                position: 'relative', transition: 'all 0.2s', flexShrink: 0
               }}
+              type="button"
             >
               <div style={{
                 width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff',
@@ -128,7 +131,7 @@ export function Settings() {
             </button>
           </div>
 
-          <div className="flex-between">
+          <div className="flex-between" style={{gap: '12px'}}>
             <div>
               <h3 style={{fontWeight: 600, marginBottom: '4px'}}>Exibir Painel TV</h3>
               <p className="text-muted text-sm">Habilita a visualização do botão para o modo apresentação.</p>
@@ -138,8 +141,9 @@ export function Settings() {
               style={{
                 width: '44px', height: '24px', borderRadius: '12px',
                 backgroundColor: settings.show_tv_panel ? 'var(--primary)' : 'var(--border-color)',
-                position: 'relative', transition: 'all 0.2s'
+                position: 'relative', transition: 'all 0.2s', flexShrink: 0
               }}
+              type="button"
             >
               <div style={{
                 width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff',
@@ -151,7 +155,7 @@ export function Settings() {
         </div>
       </div>
 
-      <div className="card" style={{maxWidth: '600px'}}>
+      <div className="card" style={{maxWidth: '600px', width: '100%'}}>
         <div style={{marginBottom: '16px'}}>
           <h3 style={{fontWeight: 600, marginBottom: '4px'}}>Vendedores e Fotos de Perfil</h3>
           <p className="text-muted text-sm">
@@ -167,7 +171,7 @@ export function Settings() {
             <div
               key={seller.id}
               className="flex-between"
-              style={{paddingBottom: '12px', borderBottom: '1px solid var(--border-color)', gap: '12px'}}
+              style={{paddingBottom: '12px', borderBottom: '1px solid var(--border-color)', gap: '12px', flexWrap: 'wrap'}}
             >
               <div className="flex-center gap-3">
                 <SellerAvatar
@@ -211,9 +215,10 @@ export function Settings() {
                   style={{
                     width: '44px', height: '24px', borderRadius: '12px',
                     backgroundColor: seller.show_in_ranking ? 'var(--primary)' : 'var(--border-color)',
-                    position: 'relative', transition: 'all 0.2s'
+                    position: 'relative', transition: 'all 0.2s', flexShrink: 0
                   }}
                   title={seller.show_in_ranking ? 'Ocultar do ranking' : 'Exibir no ranking'}
+                  type="button"
                 >
                   <div style={{
                     width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff',
@@ -227,7 +232,7 @@ export function Settings() {
         </div>
       </div>
 
-      <div className="card" style={{maxWidth: '600px'}}>
+      <div className="card" style={{maxWidth: '600px', width: '100%'}}>
         <div style={{marginBottom: '16px'}}>
           <h3 style={{fontWeight: 600, marginBottom: '4px'}}>Integração Kommo</h3>
           <p className="text-muted text-sm">
@@ -250,7 +255,7 @@ export function Settings() {
             <div
               key={seller.id}
               className="flex-between"
-              style={{paddingBottom: '12px', borderBottom: '1px solid var(--border-color)'}}
+              style={{paddingBottom: '12px', borderBottom: '1px solid var(--border-color)', gap: '12px', flexWrap: 'wrap'}}
             >
               <span>{seller.name}</span>
               <select
@@ -262,6 +267,8 @@ export function Settings() {
                   border: '1px solid var(--border-color)',
                   backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-dark)',
+                  maxWidth: '220px',
+                  width: '100%'
                 }}
               >
                 <option value="">Não vinculado</option>

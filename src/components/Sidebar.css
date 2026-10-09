@@ -1,5 +1,7 @@
 .sidebar {
   width: 260px;
+  min-width: 260px;
+  flex-shrink: 0;
   background-color: var(--bg-sidebar);
   color: var(--text-sidebar-muted);
   display: flex;
@@ -8,15 +10,19 @@
   height: 100vh;
   border-top-right-radius: 24px;
   border-bottom-right-radius: 24px;
+  box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
 }
 
 .sidebar-header {
   margin-bottom: 32px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   padding: 0 4px;
-  text-align: center;
+  position: relative;
 }
 
 .sidebar-logo {
@@ -28,6 +34,29 @@
   display: block;
 }
 
+.sidebar-close-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: #FFFFFF;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
 .sidebar-nav {
   flex: 1;
 }
@@ -35,7 +64,7 @@
 .sidebar-nav ul {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .nav-link {
@@ -62,6 +91,7 @@
 
 .sidebar-footer {
   margin-top: auto;
+  padding-top: 16px;
 }
 
 .btn-logout {
@@ -77,15 +107,14 @@
   width: 100%;
   justify-content: center;
   transition: opacity 0.2s;
+  box-sizing: border-box;
 }
 
 .btn-logout:hover {
   opacity: 0.9;
 }
 
-
-
-/* Sleek Black Toggle Switch (Reference Image 2) */
+/* Sleek Black Toggle Switch */
 .sleek-theme-switch {
   width: 56px;
   height: 28px;
@@ -150,8 +179,6 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-
-
 [data-theme="dark"] .sleek-theme-switch {
   background-color: #000000;
   border-color: rgba(255, 255, 255, 0.25);
@@ -169,4 +196,55 @@
   color: #FEE2E2;
 }
 
+/* ============================================================
+   Mobile & Tablet Drawer Behavior (<= 1024px)
+   ============================================================ */
+@media (max-width: 1024px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 10000;
+    width: 280px;
+    max-width: 85vw;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0 24px 24px 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: none;
+    padding: 24px 20px;
+  }
 
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: 10px 0 45px rgba(0, 0, 0, 0.6);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .sidebar-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar-close-btn {
+    display: flex;
+  }
+
+  .sidebar-logo {
+    max-width: 170px;
+  }
+}

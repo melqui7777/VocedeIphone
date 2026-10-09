@@ -733,3 +733,61 @@
 [data-theme='dark'] .btn-secondary:hover {
   background-color: #475569;
 }
+
+/* ============================================================
+   Mobile Responsive Queries
+   ============================================================ */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .modal-container {
+    max-height: 94vh;
+    border-radius: 16px;
+  }
+
+  .modal-header {
+    padding: 16px 18px;
+  }
+
+  .modal-title {
+    font-size: 17px;
+  }
+
+  .metrics-bar {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 12px 18px;
+    gap: 8px;
+  }
+
+  .modal-tabs {
+    padding: 0 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-btn {
+    padding: 12px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .modal-body {
+    padding: 16px 18px 24px;
+  }
+
+  .summary-details-grid,
+  .analysis-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .chat-bubble-wrapper {
+    max-width: 92%;
+  }
+
+  .modal-footer {
+    padding: 12px 18px;
+  }
+}

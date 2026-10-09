@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -11,14 +11,14 @@ import {
   Receipt,
   LogOut,
   Sun,
-  Moon
+  Moon,
+  X
 } from 'lucide-react';
 
 import logoImg from '../assets/logo.png';
 import './Sidebar.css';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -31,71 +31,130 @@ const navItems = [
   { path: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
   const { signOut } = useAuth();
 
+  // Close sidebar on ESC key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && onClose) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Lock body scroll when mobile drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  const handleNavClick = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  const handleLogout = () => {
+    if (onClose) {
+      onClose();
+    }
+    signOut();
+  };
+
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-        <img src={logoImg} alt="Você de iPhone" className="sidebar-logo" />
-      </div>
-      
-      <nav className="sidebar-nav">
-        <ul>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            if (item.openInNewTab) {
+    <>
+      <div 
+        className={`sidebar-backdrop ${isOpen ? 'open' : ''}`} 
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <aside className={`sidebar ${isOpen ? 'mobile-open' : ''}`}>
+        <div className="sidebar-header">
+          <img src={logoImg} alt="Você de iPhone" className="sidebar-logo" />
+          <button 
+            className="sidebar-close-btn" 
+            onClick={onClose} 
+            aria-label="Fechar menu"
+            type="button"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        
+        <nav className="sidebar-nav">
+          <ul>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              if (item.openInNewTab) {
+                return (
+                  <li key={item.path}>
+                    <a 
+                      href={item.path} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="nav-link"
+                      title="Abrir Painel da Loja em nova guia"
+                      onClick={handleNavClick}
+                    >
+                      <Icon size={20} />
+                      <span>{item.label}</span>
+                    </a>
+                  </li>
+                );
+              }
               return (
                 <li key={item.path}>
-                  <a 
-                    href={item.path} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="nav-link"
-                    title="Abrir Painel da Loja em nova guia"
+                  <NavLink 
+                    to={item.path} 
+                    className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                    onClick={handleNavClick}
                   >
                     <Icon size={20} />
                     <span>{item.label}</span>
-                  </a>
+                  </NavLink>
                 </li>
               );
-            }
-            return (
-              <li key={item.path}>
-                <NavLink 
-                  to={item.path} 
-                  className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-                >
-                  <Icon size={20} />
-                  <span>{item.label}</span>
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+            })}
+          </ul>
+        </nav>
 
-      <div className="sidebar-footer">
-        <div 
-          className={`sleek-theme-switch ${theme === 'dark' ? 'dark-active' : ''}`} 
-          onClick={toggleTheme} 
-          title="Alternar Modo Claro/Escuro"
-          style={{ cursor: 'pointer', margin: '0 0 16px 0' }}
-        >
-          <Sun size={13} color="#ffffff" className="switch-icon-sun" />
-          <Moon size={13} color="#ffffff" className="switch-icon-moon" />
-          <div className="switch-thumb" />
+        <div className="sidebar-footer">
+          <div 
+            className={`sleek-theme-switch ${theme === 'dark' ? 'dark-active' : ''}`} 
+            onClick={toggleTheme} 
+            title="Alternar Modo Claro/Escuro"
+            style={{ cursor: 'pointer', margin: '0 0 16px 0' }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleTheme()}
+          >
+            <Sun size={13} color="#ffffff" className="switch-icon-sun" />
+            <Moon size={13} color="#ffffff" className="switch-icon-moon" />
+            <div className="switch-thumb" />
+          </div>
+
+          <button className="btn-logout" onClick={handleLogout} type="button">
+            <LogOut size={20} />
+            <span>LOGOUT</span>
+          </button>
         </div>
-
-        <button className="btn-logout" onClick={() => signOut()}>
-
-          <LogOut size={20} />
-          <span>LOGOUT</span>
-        </button>
-      </div>
-    </aside>
-
+      </aside>
+    </>
   );
 }
-
